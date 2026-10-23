@@ -1,0 +1,1066 @@
+{% extends 'base.html' %}
+{% block title %}Verify & Audit Extracted Trip Memo{% endblock %}
+
+{% block content %}
+<!-- Top Header & Navigation -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+            <h2 class="fw-bold text-white mb-0">AI Extracted Memo Verification</h2>
+            <span class="badge bg-success rounded-pill px-3 py-1">
+                <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Auto-Extracted & Audited
+            </span>
+            {% if validation and validation.has_mismatch %}
+            <span class="badge bg-warning text-dark rounded-pill px-3 py-1">
+                <i class="fa-solid fa-triangle-exclamation me-1"></i> Math Check Required
+            </span>
+            {% else %}
+            <span class="badge bg-info bg-opacity-25 text-info border border-info border-opacity-25 rounded-pill px-3 py-1">
+                <i class="fa-solid fa-check-double me-1"></i> Math Consistent
+            </span>
+            {% endif %}
+        </div>
+        <p class="text-muted small mb-0">
+            Compare the handwritten memo on the left with the auto-filled fields on the right. Modify any uncertain values; live totals recalculate in real-time.
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('driver.upload_memo') }}" class="btn btn-outline-custom btn-sm">
+            <i class="fa-solid fa-camera me-1"></i> Scan Another Memo
+        </a>
+    </div>
+</div>
+
+<!-- Main Verification Form -->
+<form method="POST" action="{{ url_for('driver.upload_memo') }}" id="memoVerifyForm">
+    <input type="hidden" name="action" value="save_memo">
+    <input type="hidden" name="memo_file_path" value="{{ data.memo_file_path }}">
+    <input type="hidden" name="enhanced_image_path" value="{{ data.enhanced_image_path }}">
+    <input type="hidden" name="ocr_raw_text" value="{{ data.raw_text }}">
+    <input type="hidden" name="extracted_json" value="{{ data.extracted_json_raw }}">
+    <input type="hidden" name="table_rows_json" id="table_rows_json" value="">
+    <input type="hidden" name="verification_status" value="VERIFIED">
+
+    <div class="row g-4 mb-4">
+        <!-- LEFT PANEL: Original & Enhanced Document Preview with Zoom, Rotate, and Toggles -->
+        <div class="col-12 col-lg-5">
+            <div class="glass-panel p-3 h-100 d-flex flex-column">
+                <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                    <!-- Image View Mode Switcher -->
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-primary" id="btnShowEnhanced" onclick="toggleImageView('enhanced')">
+                            <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Enhanced
+                        </button>
+                        <button type="button" class="btn btn-outline-custom" id="btnShowOriginal" onclick="toggleImageView('original')">
+                            <i class="fa-solid fa-image me-1"></i> Original
+                        </button>
+                        <button type="button" class="btn btn-outline-custom" id="btnShowBinarized" onclick="toggleImageView('binarized')">
+                            <i class="fa-solid fa-circle-half-stroke me-1"></i> Binarized
+                        </button>
+                    </div>
+
+                    <!-- Zoom & Rotate Controls -->
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-custom" id="zoomInBtn" title="Zoom In">
+                                <i class="fa-solid fa-magnifying-glass-plus"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-custom" id="zoomOutBtn" title="Zoom Out">
+                                <i class="fa-solid fa-magnifying-glass-minus"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-custom" id="zoomResetBtn" title="Reset Zoom">
+                                <i class="fa-solid fa-expand"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-custom" id="rotateLeftBtn" title="Rotate Left 90°">
+                                <i class="fa-solid fa-rotate-left"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-custom" id="rotateBtn" title="Rotate Right 90°">
+                                <i class="fa-solid fa-rotate-right"></i>
+                            </button>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-primary shadow-sm" id="btnRescanOrientation" title="Re-scan memo with current orientation" style="font-size: 0.78rem;">
+                            <i class="fa-solid fa-arrows-rotate me-1"></i> Re-Scan Orientation
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Document Image Container with Interactive Highlight Canvas -->
+                <div class="ocr-preview-container position-relative overflow-hidden flex-grow-1 border border-secondary rounded" style="min-height: 540px; background: #0b1120;" id="imageContainer">
+                    <img src="{{ enhanced_image_url or image_url }}" 
+                         id="previewMemoImg" 
+                         class="ocr-preview-image transition-all" 
+                         alt="Handwritten Trip Memo" 
+                         data-enhanced="{{ enhanced_image_url or image_url }}" 
+                         data-original="{{ image_url }}" 
+                         data-binarized="{{ binarized_image_url or image_url }}" 
+                         style="transition: transform 0.2s ease; cursor: grab; max-width: 100%; display: block; margin: 0 auto;">
+                    
+                    <!-- Dynamic Bounding Box Highlight Overlay -->
+                    <div id="highlightBox" class="position-absolute d-none border-2 border-warning rounded shadow-lg" 
+                         style="border-style: solid; background: rgba(245, 158, 11, 0.25); pointer-events: none; transition: all 0.2s ease; z-index: 10;">
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-2 px-1">
+                    <span class="badge bg-info bg-opacity-10 text-info small" id="imageModeBadge">
+                        <i class="fa-solid fa-check-circle me-1"></i> Viewing: AI Enhanced (Shadows Removed & Contrast Boosted)
+                    </span>
+                    <span class="text-muted small">Scroll to pan / Click field to highlight</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL: Auto-Filled Form & Live Real-Time Financials -->
+        <div class="col-12 col-lg-7">
+            <!-- LIVE FINANCIAL CALCULATION BADGE BAR -->
+            <div class="glass-panel p-3 mb-3" style="background: rgba(17, 27, 49, 0.95); border: 1px solid var(--border-highlight);">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="small fw-bold text-muted text-uppercase">
+                        <i class="fa-solid fa-calculator text-primary me-1"></i> Live Financial Audit:
+                    </div>
+                    <span id="display_status_badge" class="badge bg-success px-3 py-1 rounded-pill">STATUS: PROFIT</span>
+                </div>
+                <div class="row g-2 text-center">
+                    <div class="col-4">
+                        <span class="text-muted small d-block">Operating Expenses</span>
+                        <strong id="display_total_expense" class="text-warning fs-5">₹0.00</strong>
+                    </div>
+                    <div class="col-4">
+                        <span class="text-muted small d-block">Estimated Net Profit</span>
+                        <strong id="display_profit" class="text-success fs-5">₹0.00</strong>
+                    </div>
+                    <div class="col-4">
+                        <span class="text-muted small d-block">Driver Settlement</span>
+                        <strong id="display_net_amount" class="text-primary fs-5">₹0.00</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mathematical Audit Warning Alert (If Sum != Handwritten Total) -->
+            {% if validation and validation.warnings %}
+            <div class="mb-3">
+                {% for w in validation.warnings %}
+                <div class="alert {% if w.type == 'MATH_MISMATCH' %}alert-warning border-warning{% else %}alert-info border-info{% endif %} bg-opacity-10 py-2 px-3 small d-flex align-items-center justify-content-between mb-2">
+                    <div>
+                        <i class="fa-solid fa-circle-exclamation me-2 {% if w.type == 'MATH_MISMATCH' %}text-warning{% else %}text-info{% endif %}"></i>
+                        <strong>{{ w.type }}:</strong> {{ w.message }}
+                        {% if w.tamil_message %}
+                        <div class="text-muted mt-1" style="font-size: 0.78rem;">
+                            <i class="fa-solid fa-language me-1"></i> {{ w.tamil_message }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <span class="badge {% if w.type == 'MATH_MISMATCH' %}bg-warning text-dark{% else %}bg-info{% endif %}">Review</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Form Container -->
+            <div class="glass-panel p-4">
+                <!-- Trip Header & Vehicle Particulars -->
+                <div class="d-flex justify-content-between align-items-center mb-3 border-bottom border-secondary pb-2">
+                    <h5 class="fw-bold text-white mb-0">
+                        <i class="fa-solid fa-truck-moving text-primary me-2"></i>Trip & Vehicle Particulars
+                    </h5>
+                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 small">
+                        OCR Engine: {{ data.ocr_engine or 'EasyOCR' }}
+                    </span>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <!-- Memo Number -->
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label mb-0 small">Memo Number <span class="text-danger">*</span></label>
+                            {% if data.confidence and data.confidence.memo_number %}
+                            <span class="badge {% if data.confidence.memo_number >= 0.85 %}bg-success{% else %}bg-warning text-dark{% endif %} px-2 py-0" style="font-size: 0.7rem;">
+                                {{ (data.confidence.memo_number * 100)|int }}% Conf
+                            </span>
+                            {% endif %}
+                        </div>
+                        <input type="text" name="memo_number" id="field_memo_number" class="form-control font-monospace text-primary fw-bold" value="{{ data.memo_number }}" required data-field="memo_number">
+                    </div>
+
+                    <!-- Memo Date -->
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label mb-0 small">Memo Date <span class="text-danger">*</span></label>
+                            {% if data.confidence and data.confidence.date %}
+                            <span class="badge {% if data.confidence.date >= 0.85 %}bg-success{% else %}bg-warning text-dark{% endif %} px-2 py-0" style="font-size: 0.7rem;">
+                                {{ (data.confidence.date * 100)|int }}% Conf
+                            </span>
+                            {% endif %}
+                        </div>
+                        <input type="date" name="memo_date" id="field_memo_date" class="form-control" value="{{ data.memo_date }}" required data-field="date">
+                    </div>
+
+                    <!-- Vehicle Fleet Match Dropdown -->
+                    <div class="col-md-6">
+                        <label class="form-label small">Fleet Vehicle Match</label>
+                        <select name="vehicle_id" class="form-select">
+                            <option value="">-- Associate Registered Vehicle --</option>
+                            {% for v in vehicles %}
+                            <option value="{{ v.id }}" {% if matched_vehicle and matched_vehicle.id == v.id %}selected{% endif %}>
+                                {{ v.vehicle_number }} ({{ v.vehicle_type }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Extracted Vehicle Registration Text -->
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label mb-0 small">Extracted Vehicle Plate</label>
+                            {% if data.confidence and data.confidence.vehicle_number %}
+                            <span class="badge {% if data.confidence.vehicle_number >= 0.85 %}bg-success{% else %}bg-warning text-dark{% endif %} px-2 py-0" style="font-size: 0.7rem;">
+                                {{ (data.confidence.vehicle_number * 100)|int }}% Conf
+                            </span>
+                            {% endif %}
+                        </div>
+                        <input type="text" name="vehicle_number_text" id="field_vehicle_number" class="form-control font-monospace fw-bold" value="{{ data.vehicle_number }}" placeholder="e.g. TN 28 AB 1234" data-field="vehicle_number">
+                    </div>
+
+                    <!-- Driver Name & Phone -->
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label mb-0 small">Driver Name</label>
+                            {% if data.confidence and data.confidence.driver_name %}
+                            <span class="badge {% if data.confidence.driver_name >= 0.85 %}bg-success{% else %}bg-warning text-dark{% endif %} px-2 py-0" style="font-size: 0.7rem;">
+                                {{ (data.confidence.driver_name * 100)|int }}% Conf
+                            </span>
+                            {% endif %}
+                        </div>
+                        <input type="text" name="driver_name" id="field_driver_name" class="form-control" value="{{ data.driver_name }}" placeholder="e.g. Kumar / Murugan" data-field="driver_name">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label small">Driver Phone</label>
+                        <input type="text" name="driver_phone" class="form-control" value="{{ data.driver_phone }}" placeholder="e.g. 9876543210">
+                    </div>
+
+                    <!-- Origin / Source -->
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label mb-0 small">Origin / Source (புறப்படும் இடம்) <span class="text-danger">*</span></label>
+                            {% if data.confidence and data.confidence.from_place %}
+                            <span class="badge {% if data.confidence.from_place >= 0.85 %}bg-success{% else %}bg-warning text-dark{% endif %} px-2 py-0" style="font-size: 0.7rem;">
+                                {{ (data.confidence.from_place * 100)|int }}% Conf
+                            </span>
+                            {% endif %}
+                        </div>
+                        <input type="text" name="source" id="field_source" class="form-control" value="{{ data.source }}" placeholder="e.g. Salem / Ariyalur" required data-field="from_place">
+                    </div>
+
+                    <!-- Destination -->
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label mb-0 small">Destination (செல்லும் இடம்) <span class="text-danger">*</span></label>
+                            {% if data.confidence and data.confidence.to_place %}
+                            <span class="badge {% if data.confidence.to_place >= 0.85 %}bg-success{% else %}bg-warning text-dark{% endif %} px-2 py-0" style="font-size: 0.7rem;">
+                                {{ (data.confidence.to_place * 100)|int }}% Conf
+                            </span>
+                            {% endif %}
+                        </div>
+                        <input type="text" name="destination" id="field_destination" class="form-control" value="{{ data.destination }}" placeholder="e.g. Chennai / Coimbatore" required data-field="to_place">
+                    </div>
+
+                    <!-- Customer Account Association -->
+                    <div class="col-md-12">
+                        <label class="form-label small">Customer Account</label>
+                        <select name="customer_id" class="form-select">
+                            <option value="">-- Optional Customer Account --</option>
+                            {% for c in customers %}
+                            <option value="{{ c.id }}" {% if matched_customer and matched_customer.id == c.id %}selected{% endif %}>
+                                {{ c.company_name }} ({{ c.contact_person or c.mobile_number }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Material & Load Quantity -->
+                    <div class="col-md-6">
+                        <label class="form-label small">Material / Cargo (சரக்கு)</label>
+                        <input type="text" name="material" class="form-control" value="{{ data.material }}" placeholder="e.g. Cement, Steel, Rice">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label small">Load Quantity (எடை/அளவு)</label>
+                        <input type="text" name="load_quantity" class="form-control" value="{{ data.load_quantity }}" placeholder="e.g. 25 Tons / 500 Bags">
+                    </div>
+
+                    <!-- Run KM, Diesel Liters & Mileage -->
+                    <div class="col-md-4">
+                        <label class="form-label small"><i class="fa-solid fa-gauge text-info me-1"></i> Total Run KM (ஓடிய கி.மீ)</label>
+                        <input type="number" step="0.1" name="total_km" id="field_total_km" class="form-control" value="{{ data.total_km }}" placeholder="e.g. 2210">
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label small"><i class="fa-solid fa-gas-pump text-danger me-1"></i> Fuel Liters (டீசல் அளவு)</label>
+                        <input type="number" step="0.1" name="fuel_quantity" id="field_fuel_quantity" class="form-control" value="{{ data.fuel_quantity }}" placeholder="e.g. 519">
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label small"><i class="fa-solid fa-chart-line text-warning me-1"></i> Mileage (மைலேஜ் KM/L)</label>
+                        <input type="number" step="0.01" name="mileage" id="field_mileage" class="form-control" value="{{ data.mileage }}" placeholder="e.g. 4.2">
+                    </div>
+                </div>
+
+                <!-- AI Extracted Tabular Rows & Columns (Excel Method / அட்டவணை முறை) -->
+                <div class="glass-panel p-3 mb-4 rounded-3" style="background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(59, 130, 246, 0.4);">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <div>
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <h5 class="fw-bold text-white mb-0">
+                                    <i class="fa-solid fa-table text-success me-2"></i>AI Extracted Spreadsheet (Excel முறை)
+                                </h5>
+                                <span class="badge bg-primary bg-opacity-25 text-primary border border-primary border-opacity-25 small">
+                                    <i class="fa-solid fa-file-invoice me-1"></i> Model: {{ data.memo_model or 'TRIP_MEMO' }}
+                                </span>
+                            </div>
+                            <small class="text-muted d-block mt-1">
+                                மெமோவில் உள்ள அனைத்து செலவு வரிகளும் Excel மாதிரி அட்டவணையாக பிரிக்கப்பட்டுள்ளன. தொகையை மாற்றினால் தானாகவே கூட்டுத்தொகை மாறும்.
+                            </small>
+                        </div>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button type="button" class="btn btn-outline-success btn-sm fw-bold shadow-sm" onclick="downloadExcel()" title="Download as Excel file (.xlsx)">
+                                <i class="fa-solid fa-file-excel me-1"></i> Download Excel (.xlsx)
+                            </button>
+                            <button type="button" class="btn btn-outline-info btn-sm" onclick="downloadCSV()" title="Download CSV">
+                                <i class="fa-solid fa-file-csv me-1"></i> CSV
+                            </button>
+                            <button type="button" class="btn btn-primary btn-sm fw-bold" onclick="addNewExcelRow()">
+                                <i class="fa-solid fa-plus me-1"></i> Add Row (வரிசை சேர்)
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Spreadsheet Table Grid -->
+                    <div class="table-responsive rounded border border-secondary mb-2" style="max-height: 360px; overflow-y: auto;">
+                        <table class="table table-dark table-hover table-bordered align-middle mb-0" id="excelMemoTable" style="font-size: 0.88rem;">
+                            <thead style="background: #1e293b; position: sticky; top: 0; z-index: 5;">
+                                <tr>
+                                    <th style="width: 5%;" class="text-center">#</th>
+                                    <th style="width: 28%;">Category (வகை - தமிழ் / English)</th>
+                                    <th style="width: 32%;">Original Text (மெமோ சொல்)</th>
+                                    <th style="width: 20%;" class="text-end">Amount (₹ தொகை)</th>
+                                    <th style="width: 9%;" class="text-center">Type</th>
+                                    <th style="width: 6%;" class="text-center">Del</th>
+                                </tr>
+                            </thead>
+                            <tbody id="excelTableBody">
+                                {% for row in (data.table_rows or []) %}
+                                <tr data-row-id="{{ loop.index }}">
+                                    <td class="text-center text-muted fw-bold row-index">{{ loop.index }}</td>
+                                    <td>
+                                        <select class="form-select form-select-sm bg-dark text-white border-secondary row-category" onchange="onExcelRowChange()">
+                                            <option value="diesel" {% if row.category_key == 'diesel' %}selected{% endif %}>Diesel / டீசல்</option>
+                                            <option value="toll" {% if row.category_key == 'toll' %}selected{% endif %}>Toll / சுங்கம்</option>
+                                            <option value="food" {% if row.category_key == 'food' %}selected{% endif %}>Food & Bata / படி</option>
+                                            <option value="loading" {% if row.category_key == 'loading' %}selected{% endif %}>Loading / ஏற்று கூலி</option>
+                                            <option value="unloading" {% if row.category_key == 'unloading' %}selected{% endif %}>Unloading / இறக்கு கூலி</option>
+                                            <option value="commission" {% if row.category_key == 'commission' %}selected{% endif %}>Commission / கமிஷன்</option>
+                                            <option value="freight" {% if row.category_key == 'freight' %}selected{% endif %}>Agreed Freight / வாடகை</option>
+                                            <option value="advance" {% if row.category_key == 'advance' %}selected{% endif %}>Advance / முன்பணம்</option>
+                                            <option value="repair" {% if row.category_key == 'repair' %}selected{% endif %}>Repair / பழுது</option>
+                                            <option value="parking" {% if row.category_key == 'parking' %}selected{% endif %}>Parking / பார்க்கிங்</option>
+                                            <option value="weighbridge" {% if row.category_key == 'weighbridge' %}selected{% endif %}>Weighbridge / எடை</option>
+                                            <option value="other" {% if row.category_key == 'other' %}selected{% endif %}>Other / இதர செலவு</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary row-text" value="{{ row.detected_text }}" placeholder="Scanned description" onchange="onExcelRowChange()">
+                                    </td>
+                                    <td>
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-text bg-secondary border-secondary text-white">₹</span>
+                                            <input type="number" step="0.01" class="form-control form-control-sm bg-dark text-white border-secondary text-end fw-bold row-amount" value="{{ row.amount }}" oninput="onExcelRowChange()">
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge {% if row.is_expense %}bg-warning text-dark{% else %}bg-success{% endif %} small row-type-badge">
+                                            {% if row.category_key == 'freight' %}Freight
+                                            {% elif row.category_key == 'advance' %}Advance
+                                            {% else %}Expense{% endif %}
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-outline-danger btn-sm py-0 px-2" onclick="deleteTableRow(this)" title="Delete Row">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot style="background: #0f172a;">
+                                <tr class="fw-bold">
+                                    <td colspan="3" class="text-end text-muted">
+                                        <i class="fa-solid fa-calculator text-primary me-1"></i> Excel Formula Sum =SUM(Expenses):
+                                    </td>
+                                    <td class="text-end text-warning fs-6" id="excelSumExpensesDisplay">₹0.00</td>
+                                    <td colspan="2" class="text-center">
+                                        <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25" id="excelMathStatusBadge">
+                                            <i class="fa-solid fa-check-double me-1"></i> Consistent
+                                        </span>
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <!-- Reconciliation Alert Box if Handwritten Total differs from Table Sum -->
+                    <div id="reconcileAlertBox" class="alert alert-warning py-2 px-3 small d-none align-items-center justify-content-between mb-0 mt-2">
+                        <div>
+                            <i class="fa-solid fa-triangle-exclamation text-warning me-2"></i>
+                            <span id="reconcileAlertText">Handwritten memo total differs from itemized row sum.</span>
+                        </div>
+                        <button type="button" class="btn btn-warning btn-sm py-0 px-2 fw-bold" onclick="autoReconcileDifference()">
+                            <i class="fa-solid fa-wand-magic-sparkles me-1"></i> 1-Click Reconcile (சமன் செய்)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Freight & Operating Expenses -->
+                <h5 class="fw-bold text-white mb-3 border-bottom border-secondary pb-2">
+                    <i class="fa-solid fa-coins text-warning me-2"></i>Freight & Itemized Expenses Particulars
+                </h5>
+
+                <div class="row g-3">
+                    <!-- Freight Amount -->
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label text-success fw-bold mb-0 small">Total Agreed Freight (INR) <span class="text-danger">*</span></label>
+                            {% if data.confidence and data.confidence.trip_amount %}
+                            <span class="badge {% if data.confidence.trip_amount >= 0.85 %}bg-success{% else %}bg-warning text-dark{% endif %} px-2 py-0" style="font-size: 0.7rem;">
+                                {{ (data.confidence.trip_amount * 100)|int }}% Conf
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-text bg-surface text-muted">₹</span>
+                            <input type="number" step="0.01" name="freight_amount" id="freight_amount" class="form-control fs-5 fw-bold text-success" value="{{ data.freight_amount }}" required data-field="freight_amount">
+                        </div>
+                    </div>
+
+                    <!-- Advance Paid -->
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label text-danger fw-bold mb-0 small">Advance Paid to Driver (INR)</label>
+                            {% if data.confidence and data.confidence.driver_advance %}
+                            <span class="badge {% if data.confidence.driver_advance >= 0.85 %}bg-success{% else %}bg-warning text-dark{% endif %} px-2 py-0" style="font-size: 0.7rem;">
+                                {{ (data.confidence.driver_advance * 100)|int }}% Conf
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-text bg-surface text-muted">₹</span>
+                            <input type="number" step="0.01" name="advance_amount" id="advance_amount" class="form-control fs-5 text-danger" value="{{ data.advance_amount }}" data-field="advance_amount">
+                        </div>
+                    </div>
+
+                    <!-- Diesel Expense -->
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label mb-0 small"><i class="fa-solid fa-gas-pump text-danger me-1"></i> Diesel Expense (டீசல்)</label>
+                            {% if data.confidence and data.confidence.fuel_expense %}
+                            <span class="badge {% if data.confidence.fuel_expense >= 0.85 %}bg-success{% else %}bg-warning text-dark{% endif %} px-2 py-0" style="font-size: 0.7rem;">
+                                {{ (data.confidence.fuel_expense * 100)|int }}% Conf
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-text bg-surface text-muted">₹</span>
+                            <input type="number" step="0.01" name="diesel_expense" id="diesel_expense" class="form-control" value="{{ data.diesel_expense }}" data-field="diesel_expense">
+                        </div>
+                    </div>
+
+                    <!-- Toll Expense -->
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label mb-0 small"><i class="fa-solid fa-road text-warning me-1"></i> Toll / Fastag (சுங்கம்)</label>
+                            {% if data.confidence and data.confidence.toll_expense %}
+                            <span class="badge {% if data.confidence.toll_expense >= 0.85 %}bg-success{% else %}bg-warning text-dark{% endif %} px-2 py-0" style="font-size: 0.7rem;">
+                                {{ (data.confidence.toll_expense * 100)|int }}% Conf
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-text bg-surface text-muted">₹</span>
+                            <input type="number" step="0.01" name="toll_expense" id="toll_expense" class="form-control" value="{{ data.toll_expense }}" data-field="toll_expense">
+                        </div>
+                    </div>
+
+                    <!-- Driver Food & Bata -->
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label mb-0 small"><i class="fa-solid fa-utensils text-primary me-1"></i> Driver Food & Bata (படி)</label>
+                            {% if data.confidence and data.confidence.food_expense %}
+                            <span class="badge {% if data.confidence.food_expense >= 0.85 %}bg-success{% else %}bg-warning text-dark{% endif %} px-2 py-0" style="font-size: 0.7rem;">
+                                {{ (data.confidence.food_expense * 100)|int }}% Conf
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-text bg-surface text-muted">₹</span>
+                            <input type="number" step="0.01" name="food_expense" id="food_expense" class="form-control" value="{{ data.food_expense }}" data-field="food_expense">
+                        </div>
+                    </div>
+
+                    <!-- Loading Coolie -->
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label mb-0 small"><i class="fa-solid fa-dolly text-purple me-1"></i> Loading Coolie (ஏற்றுதல்)</label>
+                            {% if data.confidence and data.confidence.loading_charge %}
+                            <span class="badge {% if data.confidence.loading_charge >= 0.85 %}bg-success{% else %}bg-warning text-dark{% endif %} px-2 py-0" style="font-size: 0.7rem;">
+                                {{ (data.confidence.loading_charge * 100)|int }}% Conf
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-text bg-surface text-muted">₹</span>
+                            <input type="number" step="0.01" name="loading_charges" id="loading_charges" class="form-control" value="{{ data.loading_charges }}" data-field="loading_charges">
+                        </div>
+                    </div>
+
+                    <!-- Unloading Hamali -->
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label mb-0 small"><i class="fa-solid fa-truck-loading text-info me-1"></i> Unloading Hamali (இறக்குதல்)</label>
+                            {% if data.confidence and data.confidence.unloading_charge %}
+                            <span class="badge {% if data.confidence.unloading_charge >= 0.85 %}bg-success{% else %}bg-warning text-dark{% endif %} px-2 py-0" style="font-size: 0.7rem;">
+                                {{ (data.confidence.unloading_charge * 100)|int }}% Conf
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-text bg-surface text-muted">₹</span>
+                            <input type="number" step="0.01" name="unloading_charges" id="unloading_charges" class="form-control" value="{{ data.unloading_charges }}" data-field="unloading_charges">
+                        </div>
+                    </div>
+
+                    <!-- Commission / Brokerage -->
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label mb-0 small"><i class="fa-solid fa-handshake text-warning me-1"></i> Commission (கமிஷன் / சமலன்)</label>
+                            {% if data.confidence and data.confidence.commission_expense %}
+                            <span class="badge {% if data.confidence.commission_expense >= 0.85 %}bg-success{% else %}bg-warning text-dark{% endif %} px-2 py-0" style="font-size: 0.7rem;">
+                                {{ (data.confidence.commission_expense * 100)|int }}% Conf
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-text bg-surface text-muted">₹</span>
+                            <input type="number" step="0.01" name="commission_expense" id="commission_expense" class="form-control" value="{{ data.commission_expense }}" data-field="commission_expense">
+                        </div>
+                    </div>
+
+                    <!-- Other / Misc Expense -->
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label mb-0 small"><i class="fa-solid fa-wrench text-secondary me-1"></i> Other / Misc (மற்றவை)</label>
+                            {% if data.confidence and data.confidence.other_expense %}
+                            <span class="badge {% if data.confidence.other_expense >= 0.85 %}bg-success{% else %}bg-warning text-dark{% endif %} px-2 py-0" style="font-size: 0.7rem;">
+                                {{ (data.confidence.other_expense * 100)|int }}% Conf
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-text bg-surface text-muted">₹</span>
+                            <input type="number" step="0.01" name="other_expenses" id="other_expenses" class="form-control" value="{{ data.other_expenses }}">
+                        </div>
+                    </div>
+
+                    <!-- Remarks & Notes -->
+                    <div class="col-12">
+                        <label class="form-label small">Expense Notes / Remarks</label>
+                        <input type="text" name="other_notes" class="form-control" value="{{ data.other_notes }}" placeholder="e.g. Weighbridge charge, parking or puncture repair">
+                    </div>
+                </div>
+
+                <!-- Submit & Action Buttons -->
+                <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top border-secondary flex-wrap gap-2">
+                    <a href="{{ url_for('driver.upload_memo') }}" class="btn btn-outline-custom">
+                        <i class="fa-solid fa-arrow-left me-1"></i> Re-Upload Photo
+                    </a>
+                    <button type="submit" class="btn btn-primary px-4 py-2 fs-6 shadow fw-bold">
+                        <i class="fa-solid fa-cloud-arrow-up me-2"></i> Save Verified Memo to Database
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- Pass bounding boxes to frontend script for interactive highlighting -->
+<script id="fieldBoxesData" type="application/json">
+    {{ data.field_boxes | tojson | safe if data.field_boxes else '{}' }}
+</script>
+
+<script>
+// Image Mode Switcher (Enhanced / Original / Binarized)
+function toggleImageView(mode) {
+    const img = document.getElementById('previewMemoImg');
+    const badge = document.getElementById('imageModeBadge');
+    const btnEnh = document.getElementById('btnShowEnhanced');
+    const btnOrig = document.getElementById('btnShowOriginal');
+    const btnBin = document.getElementById('btnShowBinarized');
+
+    if (!img) return;
+
+    if (mode === 'enhanced') {
+        img.src = img.getAttribute('data-enhanced');
+        if (btnEnh) btnEnh.className = 'btn btn-primary';
+        if (btnOrig) btnOrig.className = 'btn btn-outline-custom';
+        if (btnBin) btnBin.className = 'btn btn-outline-custom';
+        if (badge) badge.innerHTML = '<i class="fa-solid fa-check-circle me-1"></i> Viewing: AI Enhanced (Shadows Removed & Contrast Boosted)';
+    } else if (mode === 'original') {
+        img.src = img.getAttribute('data-original');
+        if (btnEnh) btnEnh.className = 'btn btn-outline-custom';
+        if (btnOrig) btnOrig.className = 'btn btn-primary';
+        if (btnBin) btnBin.className = 'btn btn-outline-custom';
+        if (badge) badge.innerHTML = '<i class="fa-solid fa-image me-1"></i> Viewing: Original Camera Photo';
+    } else if (mode === 'binarized') {
+        img.src = img.getAttribute('data-binarized');
+        if (btnEnh) btnEnh.className = 'btn btn-outline-custom';
+        if (btnOrig) btnOrig.className = 'btn btn-outline-custom';
+        if (btnBin) btnBin.className = 'btn btn-primary';
+        if (badge) badge.innerHTML = '<i class="fa-solid fa-circle-half-stroke me-1"></i> Viewing: Adaptive Binarized (High Contrast Strokes)';
+    }
+}
+
+// ----------------- EXCEL SPREADSHEET ENGINE -----------------
+const categoryMeta = {
+    "diesel": { en: "Diesel / Fuel", ta: "டீசல் செலவு", is_exp: true },
+    "toll": { en: "Toll / Fastag", ta: "சுங்கம் / டோல்கேட்", is_exp: true },
+    "food": { en: "Food & Bata", ta: "படி / சாப்பாடு", is_exp: true },
+    "loading": { en: "Loading Charges", ta: "ஏற்று கூலி", is_exp: true },
+    "unloading": { en: "Unloading Charges", ta: "இறக்கு கூலி", is_exp: true },
+    "commission": { en: "Broker / Commission", ta: "கமிஷன் செலவு", is_exp: true },
+    "repair": { en: "Vehicle Repair", ta: "பழுது / ரிப்பேர்", is_exp: true },
+    "parking": { en: "Parking", ta: "பார்க்கிங்", is_exp: true },
+    "weighbridge": { en: "Weighbridge", ta: "எடை கட்டணம்", is_exp: true },
+    "other": { en: "Other Expenses", ta: "இதர செலவு", is_exp: true },
+    "freight": { en: "Agreed Freight", ta: "லாரி வாடகை", is_exp: false },
+    "advance": { en: "Advance Paid", ta: "முன்பணம்", is_exp: false }
+};
+
+const handwrittenTotalVal = {{ data.handwritten_total or 0.0 }};
+
+function onExcelRowChange() {
+    const tbody = document.getElementById('excelTableBody');
+    if (!tbody) return;
+    const trs = tbody.querySelectorAll('tr');
+
+    let totalExpenseSum = 0.0;
+    let dieselSum = 0.0;
+    let tollSum = 0.0;
+    let foodSum = 0.0;
+    let loadingSum = 0.0;
+    let unloadingSum = 0.0;
+    let commissionSum = 0.0;
+    let otherSum = 0.0;
+    let freightVal = null;
+    let advanceVal = null;
+
+    const rowsData = [];
+
+    trs.forEach((tr, idx) => {
+        // Update index number
+        const indexCell = tr.querySelector('.row-index');
+        if (indexCell) indexCell.innerText = idx + 1;
+
+        const catSelect = tr.querySelector('.row-category');
+        const textInput = tr.querySelector('.row-text');
+        const amtInput = tr.querySelector('.row-amount');
+        const badge = tr.querySelector('.row-type-badge');
+
+        const catKey = catSelect ? catSelect.value : 'other';
+        const rawText = textInput ? textInput.value : '';
+        const amt = amtInput ? parseFloat(amtInput.value) || 0.0 : 0.0;
+        const meta = categoryMeta[catKey] || categoryMeta['other'];
+
+        // Update badge
+        if (badge) {
+            if (catKey === 'freight') {
+                badge.innerText = 'Freight';
+                badge.className = 'badge bg-success small row-type-badge';
+            } else if (catKey === 'advance') {
+                badge.innerText = 'Advance';
+                badge.className = 'badge bg-info small row-type-badge';
+            } else {
+                badge.innerText = 'Expense';
+                badge.className = 'badge bg-warning text-dark small row-type-badge';
+            }
+        }
+
+        // Aggregate by category
+        if (catKey === 'freight') {
+            freightVal = (freightVal || 0) + amt;
+        } else if (catKey === 'advance') {
+            advanceVal = (advanceVal || 0) + amt;
+        } else {
+            totalExpenseSum += amt;
+            if (catKey === 'diesel') dieselSum += amt;
+            else if (catKey === 'toll') tollSum += amt;
+            else if (catKey === 'food') foodSum += amt;
+            else if (catKey === 'loading') loadingSum += amt;
+            else if (catKey === 'unloading') unloadingSum += amt;
+            else if (catKey === 'commission') commissionSum += amt;
+            else otherSum += amt;
+        }
+
+        rowsData.push({
+            s_no: idx + 1,
+            category_key: catKey,
+            category_name: `${meta.en} (${meta.ta})`,
+            category_name_en: meta.en,
+            category_name_ta: meta.ta,
+            detected_text: rawText,
+            amount: amt,
+            is_expense: meta.is_exp
+        });
+    });
+
+    // Update table footer Excel formula sum
+    const sumDisplay = document.getElementById('excelSumExpensesDisplay');
+    if (sumDisplay) {
+        sumDisplay.innerText = '₹' + totalExpenseSum.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // Sync values into form fields
+    const dField = document.getElementById('diesel_expense');
+    const tField = document.getElementById('toll_expense');
+    const fField = document.getElementById('food_expense');
+    const lField = document.getElementById('loading_charges');
+    const uField = document.getElementById('unloading_charges');
+    const commField = document.getElementById('commission_expense');
+    const oField = document.getElementById('other_expenses');
+    const frField = document.getElementById('freight_amount');
+    const advField = document.getElementById('advance_amount');
+
+    if (dField && dieselSum > 0) dField.value = dieselSum.toFixed(2);
+    if (tField && tollSum > 0) tField.value = tollSum.toFixed(2);
+    if (fField && foodSum > 0) fField.value = foodSum.toFixed(2);
+    if (lField && loadingSum > 0) lField.value = loadingSum.toFixed(2);
+    if (uField && unloadingSum > 0) uField.value = unloadingSum.toFixed(2);
+    if (commField && commissionSum > 0) commField.value = commissionSum.toFixed(2);
+    if (oField && otherSum > 0) oField.value = otherSum.toFixed(2);
+    if (frField && freightVal !== null && freightVal > 0) frField.value = freightVal.toFixed(2);
+    if (advField && advanceVal !== null && advanceVal > 0) advField.value = advanceVal.toFixed(2);
+
+    // Save serialized rows into hidden form input
+    const jsonField = document.getElementById('table_rows_json');
+    if (jsonField) {
+        jsonField.value = JSON.stringify(rowsData);
+    }
+
+    // Check handwritten total reconciliation
+    const mathBadge = document.getElementById('excelMathStatusBadge');
+    const reconcileBox = document.getElementById('reconcileAlertBox');
+    const reconcileText = document.getElementById('reconcileAlertText');
+
+    if (handwrittenTotalVal > 0 && totalExpenseSum > 0) {
+        const diff = Math.abs(totalExpenseSum - handwrittenTotalVal);
+        if (diff > 10.0) {
+            if (mathBadge) {
+                mathBadge.className = 'badge bg-warning text-dark border border-warning';
+                mathBadge.innerHTML = `<i class="fa-solid fa-triangle-exclamation me-1"></i> Diff: ₹${diff.toFixed(2)}`;
+            }
+            if (reconcileBox) {
+                reconcileBox.classList.remove('d-none');
+                reconcileBox.classList.add('d-flex');
+                if (reconcileText) {
+                    reconcileText.innerHTML = `<strong>Math Check:</strong> Excel Table Sum is <strong>₹${totalExpenseSum.toFixed(2)}</strong>, but handwritten memo says <strong>₹${handwrittenTotalVal.toFixed(2)}</strong> (Variance: ₹${diff.toFixed(2)}).`;
+                }
+            }
+        } else {
+            if (mathBadge) {
+                mathBadge.className = 'badge bg-success bg-opacity-25 text-success border border-success border-opacity-25';
+                mathBadge.innerHTML = `<i class="fa-solid fa-check-double me-1"></i> 100% Consistent`;
+            }
+            if (reconcileBox) {
+                reconcileBox.classList.add('d-none');
+                reconcileBox.classList.remove('d-flex');
+            }
+        }
+    }
+
+    // Trigger base recalculation
+    if (typeof recalculateFinancials === 'function') {
+        recalculateFinancials();
+    }
+}
+
+function addNewExcelRow() {
+    const tbody = document.getElementById('excelTableBody');
+    if (!tbody) return;
+    const newIdx = tbody.querySelectorAll('tr').length + 1;
+
+    const tr = document.createElement('tr');
+    tr.setAttribute('data-row-id', newIdx);
+    tr.innerHTML = `
+        <td class="text-center text-muted fw-bold row-index">${newIdx}</td>
+        <td>
+            <select class="form-select form-select-sm bg-dark text-white border-secondary row-category" onchange="onExcelRowChange()">
+                <option value="other" selected>Other / இதர செலவு</option>
+                <option value="diesel">Diesel / டீசல்</option>
+                <option value="toll">Toll / சுங்கம்</option>
+                <option value="food">Food & Bata / படி</option>
+                <option value="loading">Loading / ஏற்று கூலி</option>
+                <option value="unloading">Unloading / இறக்கு கூலி</option>
+                <option value="commission">Commission / கமிஷன்</option>
+                <option value="repair">Repair / பழுது</option>
+                <option value="parking">Parking / பார்க்கிங்</option>
+                <option value="weighbridge">Weighbridge / எடை</option>
+                <option value="freight">Agreed Freight / வாடகை</option>
+                <option value="advance">Advance / முன்பணம்</option>
+            </select>
+        </td>
+        <td>
+            <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary row-text" value="Extra Expense" placeholder="Expense description" onchange="onExcelRowChange()">
+        </td>
+        <td>
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-secondary border-secondary text-white">₹</span>
+                <input type="number" step="0.01" class="form-control form-control-sm bg-dark text-white border-secondary text-end fw-bold row-amount" value="0.00" oninput="onExcelRowChange()">
+            </div>
+        </td>
+        <td class="text-center">
+            <span class="badge bg-warning text-dark small row-type-badge">Expense</span>
+        </td>
+        <td class="text-center">
+            <button type="button" class="btn btn-outline-danger btn-sm py-0 px-2" onclick="deleteTableRow(this)" title="Delete Row">
+                <i class="fa-solid fa-trash-can"></i>
+            </button>
+        </td>
+    `;
+    tbody.appendChild(tr);
+    onExcelRowChange();
+
+    // Focus on amount
+    const amtInp = tr.querySelector('.row-amount');
+    if (amtInp) amtInp.focus();
+}
+
+function deleteTableRow(btn) {
+    const tr = btn.closest('tr');
+    if (tr) {
+        tr.remove();
+        onExcelRowChange();
+    }
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+window.renderTableRows = function(rows) {
+    const tbody = document.getElementById('excelTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    if (!rows || rows.length === 0) {
+        onExcelRowChange();
+        return;
+    }
+    const standardKeys = ['diesel','toll','food','loading','unloading','commission','repair','parking','weighbridge','freight','advance'];
+    rows.forEach((r, idx) => {
+        const catKey = r.category_key || 'other';
+        const rawText = r.detected_text || r.category_name || '';
+        const amt = (parseFloat(r.amount) || 0.0).toFixed(2);
+        const tr = document.createElement('tr');
+        tr.setAttribute('data-row-id', idx + 1);
+        tr.innerHTML = `
+            <td class="text-center text-muted fw-bold row-index">${idx + 1}</td>
+            <td>
+                <select class="form-select form-select-sm bg-dark text-white border-secondary row-category" onchange="onExcelRowChange()">
+                    <option value="diesel" ${catKey === 'diesel' ? 'selected' : ''}>Diesel / டீசல்</option>
+                    <option value="toll" ${catKey === 'toll' ? 'selected' : ''}>Toll / சுங்கம்</option>
+                    <option value="food" ${catKey === 'food' ? 'selected' : ''}>Food & Bata / படி</option>
+                    <option value="loading" ${catKey === 'loading' ? 'selected' : ''}>Loading / ஏற்று கூலி</option>
+                    <option value="unloading" ${catKey === 'unloading' ? 'selected' : ''}>Unloading / இறக்கு கூலி</option>
+                    <option value="commission" ${catKey === 'commission' ? 'selected' : ''}>Commission / கமிஷன்</option>
+                    <option value="repair" ${catKey === 'repair' ? 'selected' : ''}>Repair / பழுது</option>
+                    <option value="parking" ${catKey === 'parking' ? 'selected' : ''}>Parking / பார்க்கிங்</option>
+                    <option value="weighbridge" ${catKey === 'weighbridge' ? 'selected' : ''}>Weighbridge / எடை</option>
+                    <option value="freight" ${catKey === 'freight' ? 'selected' : ''}>Agreed Freight / வாடகை</option>
+                    <option value="advance" ${catKey === 'advance' ? 'selected' : ''}>Advance / முன்பணம்</option>
+                    <option value="other" ${!standardKeys.includes(catKey) ? 'selected' : ''}>Other / இதர செலவு</option>
+                </select>
+            </td>
+            <td>
+                <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary row-text" value="${escapeHtml(rawText)}" placeholder="Expense description" onchange="onExcelRowChange()">
+            </td>
+            <td>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-secondary border-secondary text-white">₹</span>
+                    <input type="number" step="0.01" class="form-control form-control-sm bg-dark text-white border-secondary text-end fw-bold row-amount" value="${amt}" oninput="onExcelRowChange()">
+                </div>
+            </td>
+            <td class="text-center">
+                <span class="badge ${catKey === 'freight' ? 'bg-success' : (catKey === 'advance' ? 'bg-info' : 'bg-warning text-dark')} small row-type-badge">
+                    ${catKey === 'freight' ? 'Freight' : (catKey === 'advance' ? 'Advance' : 'Expense')}
+                </span>
+            </td>
+            <td class="text-center">
+                <button type="button" class="btn btn-outline-danger btn-sm py-0 px-2" onclick="deleteTableRow(this)" title="Delete Row">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+    onExcelRowChange();
+};
+
+function autoReconcileDifference() {
+    if (handwrittenTotalVal <= 0) return;
+    const tbody = document.getElementById('excelTableBody');
+    if (!tbody) return;
+
+    let currentExp = 0.0;
+    tbody.querySelectorAll('tr').forEach(tr => {
+        const cat = tr.querySelector('.row-category')?.value;
+        const amt = parseFloat(tr.querySelector('.row-amount')?.value) || 0.0;
+        if (cat !== 'freight' && cat !== 'advance') {
+            currentExp += amt;
+        }
+    });
+
+    const diff = Math.round((handwrittenTotalVal - currentExp) * 100) / 100;
+    if (Math.abs(diff) < 1.0) return;
+
+    // Add reconciling row
+    const newIdx = tbody.querySelectorAll('tr').length + 1;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td class="text-center text-muted fw-bold row-index">${newIdx}</td>
+        <td>
+            <select class="form-select form-select-sm bg-dark text-white border-secondary row-category" onchange="onExcelRowChange()">
+                <option value="other" selected>Other / இதர செலவு (சமன் செய்தது)</option>
+            </select>
+        </td>
+        <td>
+            <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary row-text" value="Handwritten Total Reconciliation Variance" onchange="onExcelRowChange()">
+        </td>
+        <td>
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-secondary border-secondary text-white">₹</span>
+                <input type="number" step="0.01" class="form-control form-control-sm bg-dark text-white border-secondary text-end fw-bold row-amount" value="${Math.abs(diff).toFixed(2)}" oninput="onExcelRowChange()">
+            </div>
+        </td>
+        <td class="text-center">
+            <span class="badge bg-warning text-dark small row-type-badge">Expense</span>
+        </td>
+        <td class="text-center">
+            <button type="button" class="btn btn-outline-danger btn-sm py-0 px-2" onclick="deleteTableRow(this)">
+                <i class="fa-solid fa-trash-can"></i>
+            </button>
+        </td>
+    `;
+    tbody.appendChild(tr);
+    onExcelRowChange();
+}
+
+function downloadExcel() {
+    onExcelRowChange();
+    const memoNum = document.getElementById('field_memo_number')?.value || 'MEMO-SCAN';
+    const memoDate = document.getElementById('field_memo_date')?.value || new Date().toISOString().slice(0, 10);
+    const vehNum = document.getElementById('field_vehicle_number')?.value || '';
+    const src = document.getElementById('field_source')?.value || '';
+    const dst = document.getElementById('field_destination')?.value || '';
+    const rowsJson = document.getElementById('table_rows_json')?.value || '[]';
+
+    const freight = document.getElementById('freight_amount')?.value || '0';
+    const adv = document.getElementById('advance_amount')?.value || '0';
+    const diesel = document.getElementById('diesel_expense')?.value || '0';
+    const toll = document.getElementById('toll_expense')?.value || '0';
+    const food = document.getElementById('food_expense')?.value || '0';
+    const loading = document.getElementById('loading_charges')?.value || '0';
+    const unloading = document.getElementById('unloading_charges')?.value || '0';
+    const commission = document.getElementById('commission_expense')?.value || '0';
+    const other = document.getElementById('other_expenses')?.value || '0';
+
+    // Submit via hidden dynamic form to trigger attachment download
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = "{{ url_for('driver.export_memo_excel') }}";
+    form.style.display = 'none';
+
+    const fields = {
+        memo_number: memoNum,
+        memo_date: memoDate,
+        vehicle_number_text: vehNum,
+        source: src,
+        destination: dst,
+        freight_amount: freight,
+        advance_amount: adv,
+        diesel_expense: diesel,
+        toll_expense: toll,
+        food_expense: food,
+        loading_charges: loading,
+        unloading_charges: unloading,
+        commission_expense: commission,
+        other_expenses: other,
+        table_rows_json: rowsJson
+    };
+
+    for (const [k, v] of Object.entries(fields)) {
+        const inp = document.createElement('input');
+        inp.type = 'hidden';
+        inp.name = k;
+        inp.value = v;
+        form.appendChild(inp);
+    }
+
+    document.body.appendChild(form);
+    form.submit();
+    setTimeout(() => form.remove(), 2000);
+}
+
+function downloadCSV() {
+    onExcelRowChange();
+    const rowsJson = document.getElementById('table_rows_json')?.value || '[]';
+    let rows = [];
+    try {
+        rows = JSON.parse(rowsJson);
+    } catch (e) {
+        rows = [];
+    }
+
+    const memoNum = document.getElementById('field_memo_number')?.value || 'MEMO';
+    let csvContent = "\uFEFF"; // UTF-8 BOM for Tamil support in Excel
+    csvContent += "S.No,Category (Tamil),Category (English),Scanned Text,Amount (INR),Type\n";
+
+    rows.forEach(r => {
+        const line = [
+            r.s_no,
+            `"${(r.category_name_ta || '').replace(/"/g, '""')}"`,
+            `"${(r.category_name_en || '').replace(/"/g, '""')}"`,
+            `"${(r.detected_text || '').replace(/"/g, '""')}"`,
+            (r.amount || 0).toFixed(2),
+            `"${r.is_expense ? 'Expense' : 'Revenue'}"`
+        ].join(",");
+        csvContent += line + "\n";
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Memo_${memoNum}_Spreadsheet.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// Initial calculation on DOM ready
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(onExcelRowChange, 100);
+});
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ocr_upload.js') }}"></script>
+{% endblock %}

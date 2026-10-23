@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}Upload Fuel Station Bill{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-4">
+    <div class="col-12 col-lg-8">
+        <div class="glass-panel p-4 p-md-5">
+            <div class="d-flex align-items-center gap-3 mb-4 border-bottom border-secondary pb-3">
+                <div class="p-3 rounded-circle bg-warning bg-opacity-10 text-warning">
+                    <i class="fa-solid fa-gas-pump fs-3"></i>
+                </div>
+                <div>
+                    <h3 class="fw-bold text-white mb-0">Diesel Fuel Bill Digitization</h3>
+                    <p class="text-muted small mb-0">Upload petrol pump fuel slips for automatic OCR verification of station, liters, and amount</p>
+                </div>
+            </div>
+
+            <form method="POST" action="{{ url_for('driver.upload_fuel') }}" enctype="multipart/form-data" id="fuelUploadForm">
+                <div class="mb-4">
+                    <label class="form-label fw-bold">Select Fuel Station Receipt Slip</label>
+                    <div class="p-5 text-center rounded-3 border-2 border-dashed position-relative" style="background: rgba(255,255,255,0.02); border-color: rgba(245, 158, 11, 0.4);">
+                        <i class="fa-solid fa-receipt text-warning fs-1 mb-3 d-block"></i>
+                        <h5 class="fw-bold text-white mb-1">Upload Fuel Receipt Image</h5>
+                        <p class="text-muted small mb-3">Supported formats: JPG, PNG, WEBP (Max 32MB)</p>
+                        <input type="file" name="fuel_file" class="form-control" accept="image/*" required style="max-width: 320px; margin: 0 auto;">
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center pt-3 border-top border-secondary">
+                    <a href="{{ url_for('driver.dashboard') }}" class="btn btn-outline-custom">
+                        <i class="fa-solid fa-arrow-left me-1"></i> Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary px-4 py-2">
+                        <i class="fa-solid fa-bolt me-2"></i> Scan Fuel Bill with AI OCR
+                    </button>
+                </div>
+            </form>
+
+            <div id="fuelLoadingSpinner" class="text-center py-5 d-none">
+                <div class="spinner-border text-warning mb-3" style="width: 3rem; height: 3rem;" role="status">
+                    <span class="visually-hidden">Scanning...</span>
+                </div>
+                <h5 class="fw-bold text-white">AI OCR Reading Fuel Receipt...</h5>
+                <p class="text-muted small">Extracting pump name, bill #, volume (liters), and total price...</p>
+            </div>
+
+            <!-- Quick Sample Test Helper -->
+            <div class="mt-5 p-3 rounded" style="background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.1);">
+                <div class="small fw-bold text-muted mb-2 text-uppercase letter-spacing-1">
+                    <i class="fa-solid fa-vial text-info me-1"></i> Quick Test with Sample Fuel Receipts:
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{{ url_for('static', filename='sample_memos/sample_fuel_bill_1.png') }}" download="sample_fuel_bill_1.png" class="btn btn-outline-custom btn-sm">
+                        <i class="fa-solid fa-download text-warning me-1"></i> Sample IOCL Receipt (180 L)
+                    </a>
+                    <a href="{{ url_for('static', filename='sample_memos/sample_fuel_bill_2.png') }}" download="sample_fuel_bill_2.png" class="btn btn-outline-custom btn-sm">
+                        <i class="fa-solid fa-download text-warning me-1"></i> Sample BPCL Receipt (45 L)
+                    </a>
+                    <a href="{{ url_for('static', filename='sample_memos/sample_fuel_bill_3.png') }}" download="sample_fuel_bill_3.png" class="btn btn-outline-custom btn-sm">
+                        <i class="fa-solid fa-download text-warning me-1"></i> Sample HPCL Receipt (320 L)
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('fuelUploadForm').addEventListener('submit', function() {
+    document.getElementById('fuelUploadForm').classList.add('d-none');
+    document.getElementById('fuelLoadingSpinner').classList.remove('d-none');
+});
+</script>
+{% endblock %}

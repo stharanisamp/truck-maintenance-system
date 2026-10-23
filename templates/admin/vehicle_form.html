@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+{% block title %}{{ action }} Vehicle - Fleet Management{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-4">
+    <div class="col-12 col-lg-10">
+        <div class="glass-panel p-4 p-md-5">
+            <div class="d-flex align-items-center gap-3 mb-4 border-bottom border-secondary pb-3">
+                <div class="p-3 rounded-circle bg-warning bg-opacity-10 text-warning">
+                    <i class="fa-solid fa-truck fs-3"></i>
+                </div>
+                <div>
+                    <h3 class="fw-bold text-white mb-0">{{ action }} Fleet Vehicle</h3>
+                    <p class="text-muted small mb-0">Record complete lorry credentials, specifications, insurance, and assigned driver</p>
+                </div>
+            </div>
+
+            <form method="POST">
+                <!-- Section 1: Identification & Make -->
+                <div class="mb-4">
+                    <h6 class="text-primary text-uppercase fw-bold small mb-3">
+                        <i class="fa-solid fa-id-badge me-1"></i> 1. Vehicle Identification & Brand
+                    </h6>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Vehicle Registration Number <span class="text-danger">*</span></label>
+                            <input type="text" name="vehicle_number" class="form-control font-monospace text-primary fw-bold" placeholder="e.g. TN 28 AB 1234" value="{{ vehicle.vehicle_number if vehicle else '' }}" required>
+                            <div class="form-text text-muted small">Unique state registration number</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Vehicle Type <span class="text-danger">*</span></label>
+                            <select name="vehicle_type" class="form-select" required>
+                                <option value="10 Wheeler" {% if vehicle and vehicle.vehicle_type == '10 Wheeler' %}selected{% endif %}>10 Wheeler (Heavy Goods)</option>
+                                <option value="14 Wheeler" {% if vehicle and vehicle.vehicle_type == '14 Wheeler' %}selected{% endif %}>14 Wheeler (Multi-Axle)</option>
+                                <option value="Container" {% if vehicle and vehicle.vehicle_type == 'Container' %}selected{% endif %}>Container Truck (Closed Body)</option>
+                                <option value="Trailer" {% if vehicle and vehicle.vehicle_type == 'Trailer' %}selected{% endif %}>Semi-Trailer (Long Haul)</option>
+                                <option value="6 Wheeler" {% if vehicle and vehicle.vehicle_type == '6 Wheeler' %}selected{% endif %}>6 Wheeler (Medium Goods)</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Vehicle Brand / Make</label>
+                            <input type="text" name="brand" list="brandList" class="form-control" placeholder="e.g. Tata Motors, Ashok Leyland" value="{{ vehicle.brand if vehicle and vehicle.brand else '' }}">
+                            <datalist id="brandList">
+                                <option value="Tata Motors">
+                                <option value="Ashok Leyland">
+                                <option value="BharatBenz">
+                                <option value="Eicher Motors">
+                                <option value="Mahindra">
+                                <option value="Volvo">
+                                <option value="Scania">
+                                <option value="MAN">
+                            </datalist>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Vehicle Model</label>
+                            <input type="text" name="model" class="form-control" placeholder="e.g. Signa 2823.K / 3520 Multi-Axle" value="{{ vehicle.model if vehicle else '' }}">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: RC & Technical Specifications -->
+                <div class="mb-4 pt-3 border-top border-secondary">
+                    <h6 class="text-info text-uppercase fw-bold small mb-3">
+                        <i class="fa-solid fa-file-lines me-1"></i> 2. RC Certificate & Technical Specs
+                    </h6>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">RC (Registration Certificate) # <span class="text-danger">*</span></label>
+                            <input type="text" name="rc_number" class="form-control font-monospace" placeholder="e.g. RC-TN28-2022-9988" value="{{ vehicle.rc_number if vehicle else '' }}" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">RC Expiry Date</label>
+                            <input type="date" name="rc_expiry_date" class="form-control" value="{{ vehicle.rc_expiry_date.strftime('%Y-%m-%d') if vehicle and vehicle.rc_expiry_date else '' }}">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Chassis Number</label>
+                            <input type="text" name="chassis_number" class="form-control font-monospace" placeholder="e.g. MAT624001E0A12345" value="{{ vehicle.chassis_number if vehicle and vehicle.chassis_number else '' }}">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Engine Number</label>
+                            <input type="text" name="engine_number" class="form-control font-monospace" placeholder="e.g. 6TC98765432" value="{{ vehicle.engine_number if vehicle and vehicle.engine_number else '' }}">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Load Capacity (Tonnage)</label>
+                            <input type="text" name="capacity" class="form-control" placeholder="e.g. 28 Tons / 35 Tons" value="{{ vehicle.capacity if vehicle else '' }}">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Registration Date</label>
+                            <input type="date" name="registration_date" class="form-control" value="{{ vehicle.registration_date.strftime('%Y-%m-%d') if vehicle and vehicle.registration_date else '' }}">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 3: Insurance Credentials -->
+                <div class="mb-4 pt-3 border-top border-secondary">
+                    <h6 class="text-warning text-uppercase fw-bold small mb-3">
+                        <i class="fa-solid fa-shield-halved me-1"></i> 3. Insurance Coverage
+                    </h6>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Insurance Policy Number</label>
+                            <input type="text" name="insurance_number" class="form-control font-monospace" placeholder="e.g. INS-HDFC-998822" value="{{ vehicle.insurance_number if vehicle else '' }}">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Insurance Expiry Date</label>
+                            <input type="date" name="insurance_expiry_date" class="form-control" value="{{ vehicle.insurance_expiry_date.strftime('%Y-%m-%d') if vehicle and vehicle.insurance_expiry_date else '' }}">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 4: Operations & Driver Assignment -->
+                <div class="mb-4 pt-3 border-top border-secondary">
+                    <h6 class="text-success text-uppercase fw-bold small mb-3">
+                        <i class="fa-solid fa-user-gear me-1"></i> 4. Operational Status & Driver Assignment
+                    </h6>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Assigned Driver</label>
+                            <select name="assigned_driver_id" class="form-select">
+                                <option value="">-- None / Unassigned --</option>
+                                {% for d in drivers %}
+                                <option value="{{ d.id }}" {% if vehicle and vehicle.assigned_driver_id == d.id %}selected{% endif %}>
+                                    {{ d.driver_code }} - {{ d.full_name }} ({{ d.phone }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Vehicle Status <span class="text-danger">*</span></label>
+                            <select name="status" class="form-select" required>
+                                <option value="Active" {% if vehicle and vehicle.status == 'Active' %}selected{% endif %}>🟢 Active (Ready for Road)</option>
+                                <option value="In Maintenance" {% if vehicle and vehicle.status in ['In Maintenance', 'Maintenance'] %}selected{% endif %}>🟡 In Maintenance (In Workshop)</option>
+                                <option value="In Trip" {% if vehicle and vehicle.status == 'In Trip' %}selected{% endif %}>🔵 In Trip (On Active Run)</option>
+                                <option value="Inactive" {% if vehicle and vehicle.status == 'Inactive' %}selected{% endif %}>⚪ Inactive (Parked / Standby)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top border-secondary">
+                    <a href="{{ url_for('admin.vehicles') }}" class="btn btn-outline-custom">
+                        <i class="fa-solid fa-arrow-left me-1"></i> Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary px-4 py-2">
+                        <i class="fa-solid fa-check me-2"></i> Save Vehicle Details
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

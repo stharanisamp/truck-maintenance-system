@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% block title %}Fuel Theft & Pilferage Monitoring{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold text-white mb-1"><i class="fa-solid fa-gas-pump text-danger me-2"></i>Fuel Theft & Anomaly Auditing</h2>
+        <p class="text-muted small mb-0">Automated algorithmic analysis comparing route baseline allowances vs driver fuel expenses and fuel station receipts</p>
+    </div>
+    <a href="{{ url_for('admin.export_report', format_type='pdf', type='fuel') }}" class="btn btn-primary btn-sm">
+        <i class="fa-solid fa-file-pdf me-1"></i> Export Fuel Audit PDF
+    </a>
+</div>
+
+<!-- Risk Metrics Bar -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="kpi-card" style="--accent-color: #EF4444;">
+            <div class="kpi-icon-box bg-danger bg-opacity-10 text-danger">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div class="kpi-value text-danger">{{ high_risk_count }}</div>
+            <div class="kpi-label">High Risk Fuel Anomalies (>15% Discrepancy)</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="kpi-card" style="--accent-color: #F59E0B;">
+            <div class="kpi-icon-box bg-warning bg-opacity-10 text-warning">
+                <i class="fa-solid fa-circle-exclamation"></i>
+            </div>
+            <div class="kpi-value text-warning">{{ warning_count }}</div>
+            <div class="kpi-label">Warning Anomalies (5% - 15% Variance)</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="kpi-card" style="--accent-color: #10B981;">
+            <div class="kpi-icon-box bg-success bg-opacity-10 text-success">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <div class="kpi-value text-success">{{ normal_count }}</div>
+            <div class="kpi-label">Normal Consumption Runs</div>
+        </div>
+    </div>
+</div>
+
+<!-- Fuel Consumption Audit Table -->
+<div class="custom-table-card p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold text-white mb-0"><i class="fa-solid fa-list-check text-primary me-2"></i>Trip Fuel Verification Records</h5>
+        <span class="text-muted small">{{ records|length }} trips audited</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table custom-table">
+            <thead>
+                <tr>
+                    <th>Memo #</th>
+                    <th>Date</th>
+                    <th>Vehicle</th>
+                    <th>Driver</th>
+                    <th>Route (KM)</th>
+                    <th>Expected Fuel</th>
+                    <th>Actual Fuel</th>
+                    <th>Difference (L)</th>
+                    <th>Discrepancy %</th>
+                    <th>Risk Classification</th>
+                    <th>Audit Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in records %}
+                <tr class="{% if r.risk_level == 'High Risk' %}table-danger bg-opacity-10{% elif r.risk_level == 'Warning' %}table-warning bg-opacity-10{% endif %}">
+                    <td class="fw-bold font-monospace">
+                        <a href="{{ url_for('admin.memo_detail', memo_id=r.memo_id) }}" class="text-primary text-decoration-none">
+                            {{ r.memo_number }}
+                        </a>
+                    </td>
+                    <td class="small font-monospace fw-bold text-dark">{{ r.vehicle_number }}</td>
+                    <td class="small">
+                        <span class="fw-bold" style="color: #1E3A8A;">
+                            <i class="fa-solid fa-user me-1 text-primary"></i>{{ r.driver_name }}
+                        </span>
+                    </td>
+                    <td class="small text-dark">{{ r.source }} &rarr; {{ r.destination }} <span class="text-muted">({{ r.distance_km }}km)</span></td>
+                    <td class="small text-primary fw-semibold">{{ r.expected_liters }} L</td>
+                    <td class="small text-warning fw-semibold">{{ r.actual_liters }} L</td>
+                    <td class="small font-monospace fw-bold {% if r.diff_liters > 0 %}text-danger{% else %}text-success{% endif %}">
+                        {% if r.diff_liters > 0 %}+{% endif %}{{ r.diff_liters }} L
+                    </td>
+                    <td class="small fw-bold {% if r.pct_diff > 15 %}text-danger{% elif r.pct_diff > 5 %}text-warning{% else %}text-muted{% endif %}">
+                        {% if r.pct_diff > 0 %}+{% endif %}{{ r.pct_diff }}%
+                    </td>
+                    <td>
+                        {% if r.risk_level == 'High Risk' %}
+                        <span class="badge-status badge-high-risk"><i class="fa-solid fa-triangle-exclamation"></i> High Risk</span>
+                        {% elif r.risk_level == 'Warning' %}
+                        <span class="badge-status badge-warning"><i class="fa-solid fa-circle-exclamation"></i> Warning</span>
+                        {% else %}
+                        <span class="badge-status badge-normal"><i class="fa-solid fa-check"></i> Normal</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if r.is_suspicious %}
+                        <span class="badge bg-danger rounded-pill">Suspicious Flag</span>
+                        {% else %}
+                        <span class="badge bg-secondary rounded-pill">Verified</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="11" class="text-center text-muted py-4">No fuel consumption audits logged yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

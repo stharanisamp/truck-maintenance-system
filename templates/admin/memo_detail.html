@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+{% block title %}Trip Memo: {{ memo.memo_number }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h2 class="fw-bold text-white mb-0 font-monospace">{{ memo.memo_number }}</h2>
+            <span class="badge-status {% if memo.status == 'Profit' %}badge-profit{% else %}badge-loss{% endif %} fs-6">
+                {{ memo.status }} ({{ memo.profit|currency }})
+            </span>
+        </div>
+        <p class="text-muted small mb-0">Trip Run: {{ memo.source }} &rarr; {{ memo.destination }} | Logged on {{ memo.memo_date|date_fmt }}</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('admin.export_memo_excel', memo_id=memo.id) }}" class="btn btn-success btn-sm">
+            <i class="fa-solid fa-file-excel me-1"></i> Export Excel (.xlsx)
+        </a>
+        {% if memo.memo_file_path %}
+        <a href="{{ url_for('static', filename=memo.memo_file_path) }}" target="_blank" class="btn btn-primary btn-sm">
+            <i class="fa-solid fa-download me-1"></i> Download Original Memo
+        </a>
+        {% endif %}
+        <a href="{{ url_for('admin.memos') }}" class="btn btn-outline-custom btn-sm">
+            <i class="fa-solid fa-arrow-left me-1"></i> Back to Archive
+        </a>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Financial Overview & Calculations -->
+    <div class="col-12 col-lg-7">
+        <div class="glass-panel p-4 mb-4">
+            <h5 class="fw-bold text-white mb-3"><i class="fa-solid fa-calculator text-primary me-2"></i>Trip Financial Summary</h5>
+            <div class="row g-3 text-center mb-4">
+                <div class="col-4">
+                    <div class="p-3 rounded" style="background: rgba(59, 130, 246, 0.1);">
+                        <span class="text-muted small d-block">Agreed Freight</span>
+                        <strong class="text-primary fs-5">{{ memo.freight_amount|currency }}</strong>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="p-3 rounded" style="background: rgba(245, 158, 11, 0.1);">
+                        <span class="text-muted small d-block">Total Expenses</span>
+                        <strong class="text-warning fs-5">{{ memo.total_expense|currency }}</strong>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="p-3 rounded" style="background: rgba(16, 185, 129, 0.1);">
+                        <span class="text-muted small d-block">Net Profit</span>
+                        <strong class="{% if memo.profit >= 0 %}text-success{% else %}text-danger{% endif %} fs-5">{{ memo.profit|currency }}</strong>
+                    </div>
+                </div>
+            </div>
+
+            <h6 class="fw-bold text-muted small text-uppercase mb-3">Itemized Operating Expenses Breakdown:</h6>
+            {% if memo.expense %}
+            <div class="row g-2 small">
+                <div class="col-md-6 d-flex justify-content-between p-2 rounded" style="background: rgba(255,255,255,0.02);">
+                    <span class="text-muted"><i class="fa-solid fa-gas-pump text-danger me-2"></i>Diesel Expense:</span>
+                    <strong class="text-white">{{ memo.expense.diesel_expense|currency }}</strong>
+                </div>
+                <div class="col-md-6 d-flex justify-content-between p-2 rounded" style="background: rgba(255,255,255,0.02);">
+                    <span class="text-muted"><i class="fa-solid fa-road text-warning me-2"></i>Tolls / Fastag:</span>
+                    <strong class="text-white">{{ memo.expense.toll_expense|currency }}</strong>
+                </div>
+                <div class="col-md-6 d-flex justify-content-between p-2 rounded" style="background: rgba(255,255,255,0.02);">
+                    <span class="text-muted"><i class="fa-solid fa-utensils text-primary me-2"></i>Driver Food / Bata:</span>
+                    <strong class="text-white">{{ memo.expense.food_expense|currency }}</strong>
+                </div>
+                <div class="col-md-6 d-flex justify-content-between p-2 rounded" style="background: rgba(255,255,255,0.02);">
+                    <span class="text-muted"><i class="fa-solid fa-dolly text-purple me-2"></i>Loading Charges:</span>
+                    <strong class="text-white">{{ memo.expense.loading_charges|currency }}</strong>
+                </div>
+                <div class="col-md-6 d-flex justify-content-between p-2 rounded" style="background: rgba(255,255,255,0.02);">
+                    <span class="text-muted"><i class="fa-solid fa-truck-loading text-info me-2"></i>Unloading Charges:</span>
+                    <strong class="text-white">{{ memo.expense.unloading_charges|currency }}</strong>
+                </div>
+                <div class="col-md-6 d-flex justify-content-between p-2 rounded" style="background: rgba(255,255,255,0.02);">
+                    <span class="text-muted"><i class="fa-solid fa-wrench text-secondary me-2"></i>Other Expenses:</span>
+                    <strong class="text-white">{{ memo.expense.other_expenses|currency }}</strong>
+                </div>
+                {% if memo.expense.other_notes %}
+                <div class="col-12 mt-2 p-2 rounded text-muted small" style="background: rgba(255,255,255,0.02);">
+                    <strong>Notes:</strong> {{ memo.expense.other_notes }}
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Fuel Audit for This Trip -->
+        <div class="glass-panel p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold text-white mb-0"><i class="fa-solid fa-gas-pump text-danger me-2"></i>Trip Fuel Audit & Theft Check</h5>
+                {% if fuel_analysis.risk_level == 'Normal' %}
+                <span class="badge-status badge-normal">Risk: Normal</span>
+                {% elif fuel_analysis.risk_level == 'Warning' %}
+                <span class="badge-status badge-warning">Risk: Warning</span>
+                {% else %}
+                <span class="badge-status badge-high-risk">Risk: High Alert</span>
+                {% endif %}
+            </div>
+            <div class="row g-3 small">
+                <div class="col-6 col-md-3">
+                    <span class="text-muted d-block">Route Distance:</span>
+                    <strong class="text-white fs-6">{{ fuel_analysis.distance_km }} KM</strong>
+                </div>
+                <div class="col-6 col-md-3">
+                    <span class="text-muted d-block">Expected Fuel:</span>
+                    <strong class="text-primary fs-6">{{ fuel_analysis.expected_liters }} L</strong>
+                </div>
+                <div class="col-6 col-md-3">
+                    <span class="text-muted d-block">Actual Fuel Logged:</span>
+                    <strong class="text-warning fs-6">{{ fuel_analysis.actual_liters }} L</strong>
+                </div>
+                <div class="col-6 col-md-3">
+                    <span class="text-muted d-block">Variance:</span>
+                    <strong class="{% if fuel_analysis.diff_liters > 0 %}text-danger{% else %}text-success{% endif %} fs-6">
+                        {{ fuel_analysis.diff_liters }} L ({{ fuel_analysis.pct_diff }}%)
+                    </strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scanned Document Preview -->
+    <div class="col-12 col-lg-5">
+        <div class="glass-panel p-4 h-100">
+            <h5 class="fw-bold text-white mb-3"><i class="fa-solid fa-file-image text-info me-2"></i>Original Scanned Memo</h5>
+            {% if memo.memo_file_path %}
+                <div class="ocr-preview-container" style="height: 480px;">
+                    <img src="{{ url_for('static', filename=memo.memo_file_path) }}" class="ocr-preview-image" alt="Original Memo">
+                </div>
+            {% else %}
+                <div class="p-5 text-center text-muted">No image uploaded</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

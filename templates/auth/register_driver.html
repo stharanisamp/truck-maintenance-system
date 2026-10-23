@@ -1,0 +1,188 @@
+{% extends 'base.html' %}
+{% block title %}Driver Registration - Truck Maintenance System{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-4">
+    <div class="col-12 col-lg-8">
+        <div class="glass-panel p-4 p-md-5">
+            <div class="d-flex align-items-center gap-3 mb-4 border-bottom border-secondary pb-3">
+                <div class="p-3 rounded-circle bg-info bg-opacity-10 text-info">
+                    <i class="fa-solid fa-address-card fs-3"></i>
+                </div>
+                <div>
+                    <h3 class="fw-bold text-white mb-0">Driver Enrollment</h3>
+                    <p class="text-muted small mb-0">Register your driving credentials and verify with email OTP to join the transport fleet</p>
+                </div>
+            </div>
+
+            <form method="POST" action="{{ url_for('auth.register_driver') }}" onsubmit="return validateDriverForm()">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Driver Code / ID</label>
+                        <input type="text" name="driver_code" class="form-control font-monospace text-primary fw-bold" value="{{ next_code }}" readonly>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Full Name <span class="text-danger">*</span></label>
+                        <input type="text" name="full_name" class="form-control" placeholder="e.g. Senthil Murugan" required>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Email Address (Any Email) <span class="text-danger">*</span></label>
+                        <input type="email" name="email" class="form-control" placeholder="your-email@gmail.com" required>
+                        <div class="form-text text-muted small mt-1">A 6-digit OTP will be sent to this email.</div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Phone Number <span class="text-danger">*</span></label>
+                        <input type="tel" name="phone" class="form-control" placeholder="+91 98765 43210" required>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Heavy Vehicle Driving License <span class="text-danger">*</span></label>
+                        <input type="text" name="license_number" class="form-control font-monospace text-uppercase" placeholder="e.g. TN-28-2018-009988" required>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Residential Address <span class="text-danger">*</span></label>
+                        <input type="text" name="address" class="form-control" placeholder="House No, Street, City, District" required>
+                    </div>
+
+                    <!-- Password -->
+                    <div class="col-md-6">
+                        <label class="form-label">Password <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                            <input type="password" name="password" id="drvPassword" class="form-control" placeholder="••••••••" required oninput="checkDrvPasswordRules(this.value)">
+                            <button class="btn btn-outline-custom border-start-0" type="button" onclick="toggleDrvPass('drvPassword', this)">
+                                <i class="fa-regular fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Confirm Password -->
+                    <div class="col-md-6">
+                        <label class="form-label">Confirm Password <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa-solid fa-shield-halved"></i></span>
+                            <input type="password" name="confirm_password" id="drvConfirmPassword" class="form-control" placeholder="Re-enter password" required oninput="checkDrvPasswordMatch()">
+                            <button class="btn btn-outline-custom border-start-0" type="button" onclick="toggleDrvPass('drvConfirmPassword', this)">
+                                <i class="fa-regular fa-eye"></i>
+                            </button>
+                        </div>
+                        <div id="drvPwdMatchMsg" class="small mt-1" style="display: none;"></div>
+                    </div>
+
+                    <!-- Password Rules Checklist -->
+                    <div class="col-12">
+                        <div class="p-2 rounded" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08);">
+                            <div class="d-flex flex-wrap gap-3">
+                                <div class="pwd-rule-item" id="drv-rule-len">
+                                    <i class="fa-regular fa-circle"></i> Minimum 6 characters
+                                </div>
+                                <div class="pwd-rule-item" id="drv-rule-num">
+                                    <i class="fa-regular fa-circle"></i> At least 1 number (0-9)
+                                </div>
+                                <div class="pwd-rule-item" id="drv-rule-spec">
+                                    <i class="fa-regular fa-circle"></i> At least 1 special character (!@#$%^&*)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top border-secondary">
+                    <a href="{{ url_for('auth.login') }}" class="btn btn-outline-custom">
+                        <i class="fa-solid fa-arrow-left me-1"></i> Back to Login
+                    </a>
+                    <button type="submit" class="btn btn-primary px-4 py-2">
+                        <i class="fa-solid fa-paper-plane me-2"></i> Send Verification OTP to Email
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleDrvPass(fieldId, btn) {
+    const field = document.getElementById(fieldId);
+    const icon = btn.querySelector('i');
+    if (field.type === 'password') {
+        field.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        field.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}
+
+function checkDrvPasswordRules(val) {
+    const hasLen = val.length >= 6;
+    const hasNum = /\d/.test(val);
+    const hasSpec = /[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\/`~]/.test(val);
+
+    updateDrvRule('drv-rule-len', hasLen);
+    updateDrvRule('drv-rule-num', hasNum);
+    updateDrvRule('drv-rule-spec', hasSpec);
+    checkDrvPasswordMatch();
+}
+
+function updateDrvRule(elementId, isValid) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    const icon = el.querySelector('i');
+    if (isValid) {
+        el.classList.add('valid');
+        el.classList.remove('invalid');
+        icon.className = 'fa-solid fa-check-circle text-success';
+    } else {
+        el.classList.remove('valid');
+        icon.className = 'fa-regular fa-circle';
+    }
+}
+
+function checkDrvPasswordMatch() {
+    const p1 = document.getElementById('drvPassword').value;
+    const p2 = document.getElementById('drvConfirmPassword').value;
+    const msg = document.getElementById('drvPwdMatchMsg');
+
+    if (!p2) {
+        msg.style.display = 'none';
+        return;
+    }
+
+    msg.style.display = 'block';
+    if (p1 === p2) {
+        msg.innerHTML = '<span class="text-success"><i class="fa-solid fa-check me-1"></i> Passwords match</span>';
+    } else {
+        msg.innerHTML = '<span class="text-danger"><i class="fa-solid fa-xmark me-1"></i> Passwords do not match</span>';
+    }
+}
+
+function validateDriverForm() {
+    const p1 = document.getElementById('drvPassword').value;
+    const p2 = document.getElementById('drvConfirmPassword').value;
+
+    if (p1.length < 6) {
+        alert('Password must be at least 6 characters long.');
+        return false;
+    }
+    if (!/\d/.test(p1)) {
+        alert('Password must contain at least one number (0-9).');
+        return false;
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\/`~]/.test(p1)) {
+        alert('Password must contain at least one special character (!, @, #, $, %, etc.).');
+        return false;
+    }
+    if (p1 !== p2) {
+        alert('Passwords do not match. Please verify and retype.');
+        return false;
+    }
+    return true;
+}
+</script>
+{% endblock %}

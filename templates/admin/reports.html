@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% block title %}Enterprise Fleet Reports{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold text-white mb-1"><i class="fa-solid fa-file-invoice text-purple me-2"></i>Report Generation Hub</h2>
+        <p class="text-muted small mb-0">Generate audit-ready reports exported directly to printable PDF and editable Microsoft Word (DOCX)</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- 1. Memo Reports -->
+    <div class="col-12 col-md-6 col-lg-4">
+        <div class="glass-panel p-4 h-100 d-flex flex-column justify-content-between">
+            <div>
+                <div class="d-inline-flex p-3 rounded-circle bg-success bg-opacity-10 text-success mb-3">
+                    <i class="fa-solid fa-receipt fs-3"></i>
+                </div>
+                <h5 class="fw-bold text-white mb-2">Trip Memo Reports</h5>
+                <p class="text-muted small">Comprehensive ledger of all completed trips, route origin/destinations, agreed freights, and audited net profit/loss.</p>
+            </div>
+            <div class="d-flex gap-2 mt-3 pt-3 border-top border-secondary">
+                <a href="{{ url_for('admin.export_report', format_type='pdf', type='memo') }}" class="btn btn-outline-custom flex-grow-1 text-danger">
+                    <i class="fa-solid fa-file-pdf me-1"></i> PDF
+                </a>
+                <a href="{{ url_for('admin.export_report', format_type='docx', type='memo') }}" class="btn btn-outline-custom flex-grow-1 text-primary">
+                    <i class="fa-solid fa-file-word me-1"></i> DOCX
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Expense Reports -->
+    <div class="col-12 col-md-6 col-lg-4">
+        <div class="glass-panel p-4 h-100 d-flex flex-column justify-content-between">
+            <div>
+                <div class="d-inline-flex p-3 rounded-circle bg-warning bg-opacity-10 text-warning mb-3">
+                    <i class="fa-solid fa-money-bill-transfer fs-3"></i>
+                </div>
+                <h5 class="fw-bold text-white mb-2">Fleet Expense Reports</h5>
+                <p class="text-muted small">Itemized breakdown covering diesel purchases, highway toll plazas, driver batta/food, coolie loading, and emergency maintenance.</p>
+            </div>
+            <div class="d-flex gap-2 mt-3 pt-3 border-top border-secondary">
+                <a href="{{ url_for('admin.export_report', format_type='pdf', type='expense') }}" class="btn btn-outline-custom flex-grow-1 text-danger">
+                    <i class="fa-solid fa-file-pdf me-1"></i> PDF
+                </a>
+                <a href="{{ url_for('admin.export_report', format_type='docx', type='expense') }}" class="btn btn-outline-custom flex-grow-1 text-primary">
+                    <i class="fa-solid fa-file-word me-1"></i> DOCX
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Profit Reports -->
+    <div class="col-12 col-md-6 col-lg-4">
+        <div class="glass-panel p-4 h-100 d-flex flex-column justify-content-between">
+            <div>
+                <div class="d-inline-flex p-3 rounded-circle bg-primary bg-opacity-10 text-primary mb-3">
+                    <i class="fa-solid fa-chart-line fs-3"></i>
+                </div>
+                <h5 class="fw-bold text-white mb-2">Profit & Loss Reports</h5>
+                <p class="text-muted small">Owner executive summary showing net business earnings, margin efficiency percentages, and loss run analysis.</p>
+            </div>
+            <div class="d-flex gap-2 mt-3 pt-3 border-top border-secondary">
+                <a href="{{ url_for('admin.export_report', format_type='pdf', type='memo') }}" class="btn btn-outline-custom flex-grow-1 text-danger">
+                    <i class="fa-solid fa-file-pdf me-1"></i> PDF
+                </a>
+                <a href="{{ url_for('admin.export_report', format_type='docx', type='memo') }}" class="btn btn-outline-custom flex-grow-1 text-primary">
+                    <i class="fa-solid fa-file-word me-1"></i> DOCX
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. Vehicle Reports -->
+    <div class="col-12 col-md-6 col-lg-4">
+        <div class="glass-panel p-4 h-100 d-flex flex-column justify-content-between">
+            <div>
+                <div class="d-inline-flex p-3 rounded-circle bg-info bg-opacity-10 text-info mb-3">
+                    <i class="fa-solid fa-truck fs-3"></i>
+                </div>
+                <h5 class="fw-bold text-white mb-2">Vehicle Performance Reports</h5>
+                <p class="text-muted small">Lorry utilization metrics, revenue generated per vehicle, RC numbers, and upcoming insurance policy expiries.</p>
+            </div>
+            <div class="d-flex gap-2 mt-3 pt-3 border-top border-secondary">
+                <a href="{{ url_for('admin.export_report', format_type='pdf', type='vehicle') }}" class="btn btn-outline-custom flex-grow-1 text-danger">
+                    <i class="fa-solid fa-file-pdf me-1"></i> PDF
+                </a>
+                <a href="{{ url_for('admin.export_report', format_type='docx', type='vehicle') }}" class="btn btn-outline-custom flex-grow-1 text-primary">
+                    <i class="fa-solid fa-file-word me-1"></i> DOCX
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. Driver Reports -->
+    <div class="col-12 col-md-6 col-lg-4">
+        <div class="glass-panel p-4 h-100 d-flex flex-column justify-content-between">
+            <div>
+                <div class="d-inline-flex p-3 rounded-circle bg-purple bg-opacity-10 text-purple mb-3">
+                    <i class="fa-solid fa-id-badge fs-3"></i>
+                </div>
+                <h5 class="fw-bold text-white mb-2">Driver Performance Reports</h5>
+                <p class="text-muted small">Driver trip completion rates, revenue contribution, customer relations, and driving license compliance tracking.</p>
+            </div>
+            <div class="d-flex gap-2 mt-3 pt-3 border-top border-secondary">
+                <a href="{{ url_for('admin.export_report', format_type='pdf', type='driver') }}" class="btn btn-outline-custom flex-grow-1 text-danger">
+                    <i class="fa-solid fa-file-pdf me-1"></i> PDF
+                </a>
+                <a href="{{ url_for('admin.export_report', format_type='docx', type='driver') }}" class="btn btn-outline-custom flex-grow-1 text-primary">
+                    <i class="fa-solid fa-file-word me-1"></i> DOCX
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 6. Fuel Reports -->
+    <div class="col-12 col-md-6 col-lg-4">
+        <div class="glass-panel p-4 h-100 d-flex flex-column justify-content-between">
+            <div>
+                <div class="d-inline-flex p-3 rounded-circle bg-danger bg-opacity-10 text-danger mb-3">
+                    <i class="fa-solid fa-gas-pump fs-3"></i>
+                </div>
+                <h5 class="fw-bold text-white mb-2">Fuel Theft & Consumption Reports</h5>
+                <p class="text-muted small">Comparison of expected standard fuel usage vs actual driver fuel bills, discrepancy variances, and flagged pilferage risks.</p>
+            </div>
+            <div class="d-flex gap-2 mt-3 pt-3 border-top border-secondary">
+                <a href="{{ url_for('admin.export_report', format_type='pdf', type='fuel') }}" class="btn btn-outline-custom flex-grow-1 text-danger">
+                    <i class="fa-solid fa-file-pdf me-1"></i> PDF
+                </a>
+                <a href="{{ url_for('admin.export_report', format_type='docx', type='fuel') }}" class="btn btn-outline-custom flex-grow-1 text-primary">
+                    <i class="fa-solid fa-file-word me-1"></i> DOCX
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+{% block title %}Driver Profile: {{ driver.full_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h2 class="fw-bold text-white mb-0">{{ driver.full_name }}</h2>
+            <span class="badge bg-info text-dark font-monospace">{{ driver.driver_code }}</span>
+            {% if driver.status == 'Active' %}
+            <span class="badge-status badge-active">Active</span>
+            {% else %}
+            <span class="badge-status badge-warning">{{ driver.status }}</span>
+            {% endif %}
+        </div>
+        <p class="text-muted small mb-0">Commercial Heavy Lorry Driver Portfolio & Operations Record</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('admin.edit_driver', driver_id=driver.id) }}" class="btn btn-outline-custom btn-sm">
+            <i class="fa-regular fa-pen-to-square me-1"></i> Edit Profile
+        </a>
+        <a href="{{ url_for('admin.drivers') }}" class="btn btn-outline-custom btn-sm">
+            <i class="fa-solid fa-arrow-left me-1"></i> Back to Drivers
+        </a>
+    </div>
+</div>
+
+<!-- KPI Cards for Driver -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="kpi-card">
+            <div class="kpi-value text-primary">{{ memos|length }}</div>
+            <div class="kpi-label">Completed Trips</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="kpi-card">
+            <div class="kpi-value text-white">{{ total_revenue|currency }}</div>
+            <div class="kpi-label">Freight Revenue</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="kpi-card">
+            <div class="kpi-value text-warning">{{ total_expense|currency }}</div>
+            <div class="kpi-label">Operating Expenses</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="kpi-card">
+            <div class="kpi-value {% if total_profit >= 0 %}text-success{% else %}text-danger{% endif %}">{{ total_profit|currency }}</div>
+            <div class="kpi-label">Net Generated Profit</div>
+        </div>
+    </div>
+</div>
+
+<!-- Driver Credentials & Portfolio Info -->
+<div class="row g-4 mb-4">
+    <div class="col-12 col-lg-4">
+        <div class="glass-panel p-4 h-100">
+            <h5 class="fw-bold text-white mb-3"><i class="fa-solid fa-address-card text-info me-2"></i>Driver Credentials</h5>
+            <div class="d-flex flex-column gap-3 small">
+                <div>
+                    <span class="text-muted d-block">Email Address:</span>
+                    <strong class="text-white">{{ driver.email }}</strong>
+                </div>
+                <div>
+                    <span class="text-muted d-block">Phone Number:</span>
+                    <strong class="text-white">{{ driver.phone }}</strong>
+                </div>
+                <div>
+                    <span class="text-muted d-block">Driving License #:</span>
+                    <strong class="text-white font-monospace">{{ driver.license_number }}</strong>
+                </div>
+                <div>
+                    <span class="text-muted d-block">License Expiry Date:</span>
+                    <strong class="text-white">{{ driver.license_expiry_date|date_fmt }}</strong>
+                </div>
+                <div>
+                    <span class="text-muted d-block">Joining Date:</span>
+                    <strong class="text-white">{{ driver.joining_date|date_fmt }}</strong>
+                </div>
+                <div>
+                    <span class="text-muted d-block">Permanent Address:</span>
+                    <span class="text-light">{{ driver.address or 'N/A' }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assigned Customers -->
+    <div class="col-12 col-lg-8">
+        <div class="custom-table-card p-4 h-100">
+            <h5 class="fw-bold text-white mb-3"><i class="fa-solid fa-users text-purple me-2"></i>Driver-Managed Customers</h5>
+            <div class="table-responsive">
+                <table class="table custom-table">
+                    <thead>
+                        <tr>
+                            <th>Company</th>
+                            <th>Contact Person</th>
+                            <th>Mobile</th>
+                            <th>Loading Location</th>
+                            <th>Unloading Location</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in customers %}
+                        <tr>
+                            <td class="fw-bold text-white">{{ c.company_name }}</td>
+                            <td class="small text-muted">{{ c.contact_person or '—' }}</td>
+                            <td class="small">{{ c.mobile_number }}</td>
+                            <td class="small text-muted">{{ c.loading_location or '—' }}</td>
+                            <td class="small text-muted">{{ c.unloading_location or '—' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5" class="text-center text-muted py-3">No customers managed by this driver yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Driver Trip Memos -->
+<div class="custom-table-card p-4 mb-4">
+    <h5 class="fw-bold text-white mb-3"><i class="fa-solid fa-receipt text-success me-2"></i>Trip Memo History</h5>
+    <div class="table-responsive">
+        <table class="table custom-table">
+            <thead>
+                <tr>
+                    <th>Memo #</th>
+                    <th>Date</th>
+                    <th>Vehicle</th>
+                    <th>Route</th>
+                    <th>Freight</th>
+                    <th>Expense</th>
+                    <th>Profit</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in memos %}
+                <tr>
+                    <td class="fw-bold font-monospace">
+                        <a href="{{ url_for('admin.memo_detail', memo_id=m.id) }}" class="text-primary text-decoration-none">
+                            {{ m.memo_number }}
+                        </a>
+                    </td>
+                    <td class="small text-muted">{{ m.memo_date|date_fmt }}</td>
+                    <td class="small">{{ m.vehicle.vehicle_number if m.vehicle else (m.vehicle_number_text or '—') }}</td>
+                    <td class="small">{{ m.source }} &rarr; {{ m.destination }}</td>
+                    <td class="small text-white">{{ m.freight_amount|currency }}</td>
+                    <td class="small text-muted">{{ m.total_expense|currency }}</td>
+                    <td class="small fw-bold {% if m.profit >= 0 %}text-success{% else %}text-danger{% endif %}">{{ m.profit|currency }}</td>
+                    <td>
+                        <span class="badge-status {% if m.status == 'Profit' %}badge-profit{% else %}badge-loss{% endif %}">{{ m.status }}</span>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="8" class="text-center text-muted py-3">No memos uploaded by this driver yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,552 @@
+{% extends 'base.html' %}
+{% block title %}Vehicle Intelligence: {{ vehicle.vehicle_number }} - Fleet Dossier{% endblock %}
+
+{% block content %}
+<!-- Top Header & Quick Actions -->
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+    <div>
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+            <h2 class="fw-bold text-white mb-0 font-monospace">{{ vehicle.vehicle_number }}</h2>
+            <span class="badge bg-warning text-dark fw-bold">{{ vehicle.brand or 'Fleet Truck' }}</span>
+            <span class="badge bg-secondary text-light">{{ vehicle.vehicle_type }}</span>
+            {% if vehicle.status == 'Active' %}
+            <span class="badge-status badge-active">Active (On Road)</span>
+            {% elif vehicle.status == 'In Trip' %}
+            <span class="badge bg-info bg-opacity-20 text-info border border-info border-opacity-30">In Trip</span>
+            {% elif vehicle.status in ['In Maintenance', 'Maintenance'] %}
+            <span class="badge-status badge-warning">In Maintenance</span>
+            {% else %}
+            <span class="badge-status badge-loss">Inactive</span>
+            {% endif %}
+        </div>
+        <p class="text-muted small mb-0">{{ vehicle.brand or '' }} {{ vehicle.model or '' }} &bull; Chassis: {{ vehicle.chassis_number or 'N/A' }} &bull; Reg: {{ vehicle.registration_date|date_fmt }}</p>
+    </div>
+
+    <!-- Quick Vehicle Search & Action Toolbar -->
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+        <!-- Fast Vehicle Number Switcher -->
+        <form method="GET" action="{{ url_for('admin.vehicles') }}" class="d-flex align-items-center me-2">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-surface text-muted border-end-0"><i class="fa-solid fa-magnifying-glass"></i></span>
+                <input type="text" name="q" class="form-control border-start-0 font-monospace" placeholder="Jump to Vehicle #..." style="width: 150px;">
+                <input type="hidden" name="direct" value="1">
+                <button class="btn btn-outline-custom" type="submit"><i class="fa-solid fa-arrow-right"></i></button>
+            </div>
+        </form>
+
+        <button type="button" class="btn btn-outline-warning btn-sm" data-bs-toggle="modal" data-bs-target="#renewInsuranceModal">
+            <i class="fa-solid fa-shield-halved me-1"></i> Renew Insurance
+        </button>
+        <button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#updateStatusModal">
+            <i class="fa-solid fa-traffic-light me-1"></i> Update Status
+        </button>
+        <a href="{{ url_for('admin.edit_vehicle', vehicle_id=vehicle.id) }}" class="btn btn-outline-custom btn-sm">
+            <i class="fa-regular fa-pen-to-square me-1"></i> Edit Vehicle
+        </a>
+        <form action="{{ url_for('admin.delete_vehicle', vehicle_id=vehicle.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to permanently delete vehicle {{ vehicle.vehicle_number }}?');" class="d-inline">
+            <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete Vehicle Record">
+                <i class="fa-regular fa-trash-can"></i>
+            </button>
+        </form>
+        <a href="{{ url_for('admin.vehicles') }}" class="btn btn-outline-custom btn-sm">
+            <i class="fa-solid fa-arrow-left me-1"></i> Back to Fleet
+        </a>
+    </div>
+</div>
+
+<!-- 1. PROFIT ANALYSIS KPI CARDS -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="kpi-card" style="--accent-color: #3B82F6;">
+            <div class="kpi-value text-primary">{{ memos|length }}</div>
+            <div class="kpi-label">Completed Trips</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="kpi-card" style="--accent-color: #06B6D4;">
+            <div class="kpi-value text-white">{{ total_revenue|currency }}</div>
+            <div class="kpi-label">Total Freight Revenue</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="kpi-card" style="--accent-color: #F59E0B;">
+            <div class="kpi-value text-warning">{{ total_expense|currency }}</div>
+            <div class="kpi-label">Total Trip Expenses</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="kpi-card" style="--accent-color: #10B981;">
+            <div class="kpi-value {% if total_profit >= 0 %}text-success{% else %}text-danger{% endif %}">
+                {{ total_profit|currency }}
+            </div>
+            <div class="kpi-label">Net Vehicle Profit</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- 2. COMPLETE VEHICLE DETAILS (All 14 Attributes) -->
+    <div class="col-12 col-lg-7">
+        <div class="glass-panel p-4 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold text-white mb-0">
+                    <i class="fa-solid fa-truck-ramp-box text-warning me-2"></i>Complete Vehicle Details
+                </h5>
+                <a href="{{ url_for('admin.edit_vehicle', vehicle_id=vehicle.id) }}" class="btn btn-outline-custom btn-sm py-0">
+                    <i class="fa-solid fa-pen me-1"></i> Edit
+                </a>
+            </div>
+
+            <div class="row g-3 small">
+                <!-- Vehicle Number & Brand -->
+                <div class="col-md-6 border-bottom border-secondary pb-2">
+                    <span class="text-muted d-block">Vehicle Number:</span>
+                    <strong class="text-white font-monospace fs-6">{{ vehicle.vehicle_number }}</strong>
+                </div>
+                <div class="col-md-6 border-bottom border-secondary pb-2">
+                    <span class="text-muted d-block">Brand / Make:</span>
+                    <strong class="text-white">{{ vehicle.brand or 'Standard' }}</strong>
+                </div>
+
+                <!-- Model & Type -->
+                <div class="col-md-6 border-bottom border-secondary pb-2">
+                    <span class="text-muted d-block">Vehicle Model:</span>
+                    <span class="text-light">{{ vehicle.model or '—' }}</span>
+                </div>
+                <div class="col-md-6 border-bottom border-secondary pb-2">
+                    <span class="text-muted d-block">Vehicle Type:</span>
+                    <span class="badge bg-secondary bg-opacity-50 text-light">{{ vehicle.vehicle_type }}</span>
+                </div>
+
+                <!-- RC Number & RC Expiry -->
+                <div class="col-md-6 border-bottom border-secondary pb-2">
+                    <span class="text-muted d-block">RC (Registration Certificate) #:</span>
+                    <strong class="text-info font-monospace">{{ vehicle.rc_number }}</strong>
+                </div>
+                <div class="col-md-6 border-bottom border-secondary pb-2">
+                    <span class="text-muted d-block">RC Expiry Date:</span>
+                    {% if vehicle.rc_expiry_date %}
+                        <strong class="{% if vehicle.rc_expiry_date < today %}text-danger{% else %}text-white{% endif %}">
+                            {{ vehicle.rc_expiry_date|date_fmt }}
+                        </strong>
+                    {% else %}
+                        <span class="text-muted">—</span>
+                    {% endif %}
+                </div>
+
+                <!-- Chassis & Engine Number -->
+                <div class="col-md-6 border-bottom border-secondary pb-2">
+                    <span class="text-muted d-block">Chassis Number:</span>
+                    <span class="text-light font-monospace">{{ vehicle.chassis_number or '—' }}</span>
+                </div>
+                <div class="col-md-6 border-bottom border-secondary pb-2">
+                    <span class="text-muted d-block">Engine Number:</span>
+                    <span class="text-light font-monospace">{{ vehicle.engine_number or '—' }}</span>
+                </div>
+
+                <!-- Load Capacity & Registration Date -->
+                <div class="col-md-6 border-bottom border-secondary pb-2">
+                    <span class="text-muted d-block">Payload Capacity:</span>
+                    <span class="text-white fw-bold">{{ vehicle.capacity or '—' }}</span>
+                </div>
+                <div class="col-md-6 border-bottom border-secondary pb-2">
+                    <span class="text-muted d-block">Initial Registration Date:</span>
+                    <span class="text-light">{{ vehicle.registration_date|date_fmt }}</span>
+                </div>
+
+                <!-- Insurance Policy & Expiry Date -->
+                <div class="col-md-6 border-bottom border-secondary pb-2">
+                    <span class="text-muted d-block">Insurance Policy Number:</span>
+                    <span class="text-light font-monospace">{{ vehicle.insurance_number or 'N/A' }}</span>
+                </div>
+                <div class="col-md-6 border-bottom border-secondary pb-2">
+                    <span class="text-muted d-block">Insurance Expiry Date:</span>
+                    {% if vehicle.insurance_expiry_date %}
+                        {% if vehicle.insurance_expiry_date < today %}
+                            <span class="badge bg-danger text-white">Expired ({{ vehicle.insurance_expiry_date|date_fmt }})</span>
+                        {% elif (vehicle.insurance_expiry_date - today).days <= 30 %}
+                            <span class="badge bg-warning text-dark">Expiring ({{ vehicle.insurance_expiry_date|date_fmt }})</span>
+                        {% else %}
+                            <strong class="text-white">{{ vehicle.insurance_expiry_date|date_fmt }}</strong>
+                        {% endif %}
+                    {% else %}
+                        <span class="text-muted">Not Recorded</span>
+                    {% endif %}
+                </div>
+
+                <!-- Operational Status -->
+                <div class="col-12 pt-2 d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted small me-2">Operational State:</span>
+                        {% if vehicle.status == 'Active' %}
+                        <span class="badge-status badge-active">🟢 Active (Ready)</span>
+                        {% elif vehicle.status == 'In Trip' %}
+                        <span class="badge bg-info bg-opacity-20 text-info border border-info border-opacity-30">🔵 In Trip</span>
+                        {% elif vehicle.status in ['In Maintenance', 'Maintenance'] %}
+                        <span class="badge-status badge-warning">🟡 In Maintenance</span>
+                        {% else %}
+                        <span class="badge-status badge-loss">⚪ Inactive</span>
+                        {% endif %}
+                    </div>
+                    <button class="btn btn-outline-custom btn-sm" data-bs-toggle="modal" data-bs-target="#updateStatusModal">
+                        Change Status
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. ASSIGNED DRIVER DETAILS CARD -->
+    <div class="col-12 col-lg-5">
+        <div class="glass-panel p-4 h-100 d-flex flex-column justify-content-between">
+            <div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-white mb-0">
+                        <i class="fa-solid fa-user-tie text-primary me-2"></i>Assigned Driver Details
+                    </h5>
+                    <button class="btn btn-outline-custom btn-sm py-0" data-bs-toggle="modal" data-bs-target="#assignDriverModal">
+                        <i class="fa-solid fa-user-pen me-1"></i> Assign / Change
+                    </button>
+                </div>
+
+                {% if vehicle.assigned_driver %}
+                <div class="p-3 rounded mb-3" style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2);">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <div class="p-3 rounded-circle bg-primary bg-opacity-20 text-primary fs-3">
+                            <i class="fa-solid fa-id-card"></i>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold text-white mb-0">{{ vehicle.assigned_driver.full_name }}</h5>
+                            <span class="badge bg-primary font-monospace">{{ vehicle.assigned_driver.driver_code }}</span>
+                            <span class="badge bg-success ms-1">{{ vehicle.assigned_driver.status }}</span>
+                        </div>
+                    </div>
+
+                    <div class="d-flex flex-column gap-2 small">
+                        <div class="d-flex justify-content-between border-bottom border-secondary pb-1">
+                            <span class="text-muted"><i class="fa-solid fa-phone me-1 text-info"></i> Phone:</span>
+                            <a href="tel:{{ vehicle.assigned_driver.phone }}" class="text-info fw-bold text-decoration-none">
+                                {{ vehicle.assigned_driver.phone }}
+                            </a>
+                        </div>
+                        <div class="d-flex justify-content-between border-bottom border-secondary pb-1">
+                            <span class="text-muted"><i class="fa-solid fa-envelope me-1 text-primary"></i> Email:</span>
+                            <a href="mailto:{{ vehicle.assigned_driver.email }}" class="text-light text-decoration-none">
+                                {{ vehicle.assigned_driver.email }}
+                            </a>
+                        </div>
+                        <div class="d-flex justify-content-between border-bottom border-secondary pb-1">
+                            <span class="text-muted"><i class="fa-solid fa-address-card me-1 text-warning"></i> License #:</span>
+                            <span class="text-white font-monospace">{{ vehicle.assigned_driver.license_number or 'N/A' }}</span>
+                        </div>
+                        {% if vehicle.assigned_driver.address %}
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted"><i class="fa-solid fa-location-dot me-1 text-danger"></i> Address:</span>
+                            <span class="text-light text-end">{{ vehicle.assigned_driver.address }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('admin.driver_details', driver_id=vehicle.assigned_driver.id) }}" class="btn btn-outline-primary btn-sm flex-grow-1">
+                        <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> View Driver Profile
+                    </a>
+                </div>
+                {% else %}
+                <div class="text-center py-4 my-auto">
+                    <div class="p-3 rounded-circle bg-dark d-inline-block text-muted mb-2">
+                        <i class="fa-solid fa-user-slash fs-2"></i>
+                    </div>
+                    <h6 class="text-white">No Driver Assigned</h6>
+                    <p class="text-muted small mb-3">This lorry is currently unassigned to any commercial driver.</p>
+                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#assignDriverModal">
+                        <i class="fa-solid fa-user-plus me-1"></i> Assign Active Driver
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Total Fuel Bills Summary -->
+            <div class="mt-3 p-3 rounded" style="background: rgba(255,255,255,0.03);">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="small text-muted"><i class="fa-solid fa-gas-pump me-1 text-danger"></i>Total Fuel Billed:</span>
+                    <strong class="text-white">{{ total_fuel_bills_amount|currency }} ({{ fuel_bills|length }} Bills)</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 4. OPERATING EXPENSE DETAILS & PROFIT MARGIN -->
+<div class="glass-panel p-4 mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold text-white mb-0">
+            <i class="fa-solid fa-chart-pie text-info me-2"></i>Vehicle Expense Details & Profitability Breakdown
+        </h5>
+        <span class="text-muted small">Aggregated from {{ memos|length }} Trip Memos</span>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-6 col-md-4 col-lg-2">
+            <div class="p-3 rounded text-center" style="background: rgba(239, 68, 68, 0.1); border-top: 3px solid #EF4444;">
+                <span class="text-muted small d-block mb-1">Diesel Expenses</span>
+                <strong class="text-danger fs-6">{{ diesel_total|currency }}</strong>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+            <div class="p-3 rounded text-center" style="background: rgba(245, 158, 11, 0.1); border-top: 3px solid #F59E0B;">
+                <span class="text-muted small d-block mb-1">Tolls & Fastag</span>
+                <strong class="text-warning fs-6">{{ toll_total|currency }}</strong>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+            <div class="p-3 rounded text-center" style="background: rgba(59, 130, 246, 0.1); border-top: 3px solid #3B82F6;">
+                <span class="text-muted small d-block mb-1">Driver Bata / Food</span>
+                <strong class="text-primary fs-6">{{ food_total|currency }}</strong>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+            <div class="p-3 rounded text-center" style="background: rgba(139, 92, 246, 0.1); border-top: 3px solid #8B5CF6;">
+                <span class="text-muted small d-block mb-1">Loading Charges</span>
+                <strong class="text-purple fs-6">{{ loading_total|currency }}</strong>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+            <div class="p-3 rounded text-center" style="background: rgba(6, 182, 212, 0.1); border-top: 3px solid #06B6D4;">
+                <span class="text-muted small d-block mb-1">Unloading Charges</span>
+                <strong class="text-info fs-6">{{ unloading_total|currency }}</strong>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+            <div class="p-3 rounded text-center" style="background: rgba(148, 163, 184, 0.1); border-top: 3px solid #94A3B8;">
+                <span class="text-muted small d-block mb-1">Other Overheads</span>
+                <strong class="text-light fs-6">{{ other_total|currency }}</strong>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profit Analysis Margin Bar -->
+    <div class="mt-4 p-3 rounded" style="background: rgba(255,255,255,0.03);">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="small text-muted">Vehicle Freight Profit Margin Efficiency:</span>
+            <strong class="text-white small">
+                {% if total_revenue > 0 %}
+                    {{ ((total_profit / total_revenue) * 100)|round(1) }}% Net Yield
+                {% else %}
+                    0%
+                {% endif %}
+            </strong>
+        </div>
+        <div class="progress" style="height: 10px; background: rgba(255,255,255,0.1);">
+            {% set pct = ((total_profit / total_revenue) * 100)|round(0)|int if total_revenue > 0 else 0 %}
+            <div class="progress-bar {% if pct >= 20 %}bg-success{% elif pct > 0 %}bg-warning{% else %}bg-danger{% endif %}" style="width: {{ pct if pct > 0 else 5 }}%"></div>
+        </div>
+    </div>
+</div>
+
+<!-- 5. VEHICLE MEMO HISTORY -->
+<div class="custom-table-card p-4 mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold text-white mb-0">
+            <i class="fa-solid fa-clock-rotate-left text-success me-2"></i>Vehicle Memo History ({{ memos|length }} Runs)
+        </h5>
+    </div>
+    <div class="table-responsive">
+        <table class="table custom-table">
+            <thead>
+                <tr>
+                    <th>Memo #</th>
+                    <th>Date</th>
+                    <th>Driver</th>
+                    <th>Route</th>
+                    <th>Freight (INR)</th>
+                    <th>Expenses (INR)</th>
+                    <th>Net Profit</th>
+                    <th>Trip Status</th>
+                    <th class="text-end">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in memos %}
+                <tr>
+                    <td class="fw-bold font-monospace">
+                        <a href="{{ url_for('admin.memo_detail', memo_id=m.id) }}" class="text-primary text-decoration-none">
+                            {{ m.memo_number }}
+                        </a>
+                    </td>
+                    <td class="small text-muted">{{ m.memo_date|date_fmt }}</td>
+                    <td class="small">
+                        <span class="fw-bold text-light">
+                            <i class="fa-solid fa-user me-1 text-primary"></i>{{ m.driver.full_name if m.driver else '—' }}
+                        </span>
+                    </td>
+                    <td class="small text-white">{{ m.source }} &rarr; {{ m.destination }}</td>
+                    <td class="small fw-bold text-white">{{ m.freight_amount|currency }}</td>
+                    <td class="small text-warning">{{ m.total_expense|currency }}</td>
+                    <td class="small fw-bold {% if m.profit >= 0 %}text-success{% else %}text-danger{% endif %}">{{ m.profit|currency }}</td>
+                    <td>
+                        <span class="badge-status {% if m.status == 'Profit' %}badge-profit{% else %}badge-loss{% endif %}">{{ m.status }}</span>
+                    </td>
+                    <td class="text-end">
+                        <a href="{{ url_for('admin.memo_detail', memo_id=m.id) }}" class="btn btn-outline-custom btn-sm" title="View Memo Details">
+                            <i class="fa-regular fa-eye"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="9" class="text-center text-muted py-4">No trip memos recorded for this vehicle.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 6. FUEL BILL HISTORY (New Dedicated Section) -->
+<div class="custom-table-card p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold text-white mb-0">
+            <i class="fa-solid fa-gas-pump text-danger me-2"></i>Fuel Bill History ({{ fuel_bills|length }} Records)
+        </h5>
+        <span class="text-muted small">Total: {{ total_fuel_bills_amount|currency }}</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table custom-table">
+            <thead>
+                <tr>
+                    <th>Bill #</th>
+                    <th>Date & Time</th>
+                    <th>Petrol Bunk / Station</th>
+                    <th>Quantity (Liters)</th>
+                    <th>Rate / Liter</th>
+                    <th>Total Bill Amount</th>
+                    <th>Driver Recorded</th>
+                    <th class="text-end">Receipt</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in fuel_bills %}
+                <tr>
+                    <td class="fw-bold font-monospace text-primary">
+                        {{ f.bill_number or ('FUEL-' ~ f.id) }}
+                    </td>
+                    <td class="small text-muted">{{ f.bill_date|date_fmt }}</td>
+                    <td class="small text-white">
+                        <i class="fa-solid fa-location-pin me-1 text-danger"></i>{{ f.fuel_station_name }}
+                    </td>
+                    <td class="small fw-bold text-info">{{ f.fuel_quantity }} L</td>
+                    <td class="small text-muted">{{ f.rate_per_liter|currency }}/L</td>
+                    <td class="small fw-bold text-white">{{ f.total_amount|currency }}</td>
+                    <td class="small text-light">
+                        {{ f.driver.full_name if f.driver else 'Fleet Admin' }}
+                    </td>
+                    <td class="text-end">
+                        {% if f.bill_file_path %}
+                        <a href="{{ url_for('static', filename='uploads/fuel_bills/' ~ f.bill_file_path) }}" target="_blank" class="btn btn-outline-custom btn-sm" title="View Fuel Receipt">
+                            <i class="fa-regular fa-image"></i>
+                        </a>
+                        {% else %}
+                        <span class="text-muted small">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="8" class="text-center text-muted py-4">No diesel or petrol fuel bills recorded for this vehicle.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ================= MODALS ================= -->
+
+<!-- 1. Renew Insurance Modal -->
+<div class="modal fade" id="renewInsuranceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-panel border-warning">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-white">
+                    <i class="fa-solid fa-shield-halved text-warning me-2"></i>Renew Insurance: {{ vehicle.vehicle_number }}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('admin.renew_vehicle_insurance', vehicle_id=vehicle.id) }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label text-light small">Insurance Policy Number</label>
+                        <input type="text" name="insurance_number" class="form-control font-monospace" value="{{ vehicle.insurance_number or '' }}" placeholder="e.g. INS-HDFC-998822" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-light small">New Policy Expiry Date</label>
+                        <input type="date" name="insurance_expiry_date" class="form-control" value="{{ vehicle.insurance_expiry_date.strftime('%Y-%m-%d') if vehicle.insurance_expiry_date else '' }}" required>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-custom" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Insurance Renewal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 2. Update Vehicle Status Modal -->
+<div class="modal fade" id="updateStatusModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-panel border-info">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-white">
+                    <i class="fa-solid fa-traffic-light text-info me-2"></i>Update Status: {{ vehicle.vehicle_number }}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('admin.update_vehicle_status', vehicle_id=vehicle.id) }}" method="POST">
+                <div class="modal-body">
+                    <label class="form-label text-light small">Operational Status</label>
+                    <select name="status" class="form-select" required>
+                        <option value="Active" {% if vehicle.status == 'Active' %}selected{% endif %}>🟢 Active (Ready for Road)</option>
+                        <option value="In Trip" {% if vehicle.status == 'In Trip' %}selected{% endif %}>🔵 In Trip (Running on Route)</option>
+                        <option value="In Maintenance" {% if vehicle.status in ['In Maintenance', 'Maintenance'] %}selected{% endif %}>🟡 In Maintenance (Workshop)</option>
+                        <option value="Inactive" {% if vehicle.status == 'Inactive' %}selected{% endif %}>⚪ Inactive (Parked)</option>
+                    </select>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-custom" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Status</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 3. Assign / Change Driver Modal -->
+<div class="modal fade" id="assignDriverModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-panel border-primary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-white">
+                    <i class="fa-solid fa-user-gear text-primary me-2"></i>Assign Driver to {{ vehicle.vehicle_number }}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('admin.assign_vehicle_driver', vehicle_id=vehicle.id) }}" method="POST">
+                <div class="modal-body">
+                    <label class="form-label text-light small">Select Fleet Driver</label>
+                    <select name="driver_id" class="form-select" required>
+                        <option value="none">-- Unassign Driver --</option>
+                        {% for d in drivers %}
+                        <option value="{{ d.id }}" {% if vehicle.assigned_driver_id == d.id %}selected{% endif %}>
+                            {{ d.driver_code }} - {{ d.full_name }} ({{ d.phone }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-custom" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Assignment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

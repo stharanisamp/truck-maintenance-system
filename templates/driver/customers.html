@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block title %}My Customers Portfolio{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold text-white mb-1"><i class="fa-solid fa-users text-purple me-2"></i>My Client Portfolio</h2>
+        <p class="text-muted small mb-0">Manage customer accounts, dispatch points, GST numbers, and loading/unloading logistics</p>
+    </div>
+    <a href="{{ url_for('driver.add_customer') }}" class="btn btn-primary">
+        <i class="fa-solid fa-user-plus me-1"></i> Add New Customer
+    </a>
+</div>
+
+<!-- Search Bar -->
+<div class="glass-panel p-3 mb-4">
+    <form method="GET" action="{{ url_for('driver.customers') }}" class="d-flex gap-2">
+        <div class="input-group">
+            <span class="input-group-text bg-surface text-muted border-end-0"><i class="fa-solid fa-magnifying-glass"></i></span>
+            <input type="text" name="q" class="form-control border-start-0" placeholder="Search customer company, contact person, mobile, or location..." value="{{ search }}">
+        </div>
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-filter me-1"></i> Search</button>
+        <a href="{{ url_for('driver.customers') }}" class="btn btn-outline-custom"><i class="fa-solid fa-rotate-left"></i></a>
+    </form>
+</div>
+
+<!-- Customers Table -->
+<div class="custom-table-card p-4">
+    <div class="table-responsive">
+        <table class="table custom-table">
+            <thead>
+                <tr>
+                    <th>Company Name</th>
+                    <th>Contact Person</th>
+                    <th>Mobile Number</th>
+                    <th>Email</th>
+                    <th>GST Number</th>
+                    <th>Loading Point</th>
+                    <th>Unloading Point</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in customers %}
+                <tr>
+                    <td class="fw-bold text-primary fs-6">{{ c.company_name }}</td>
+                    <td class="small text-muted">{{ c.contact_person or '—' }}</td>
+                    <td class="small font-monospace text-dark">{{ c.mobile_number }}</td>
+                    <td class="small text-muted">{{ c.email or '—' }}</td>
+                    <td class="small font-monospace text-info">{{ c.gst_number or '—' }}</td>
+                    <td class="small text-dark">{{ c.loading_location or '—' }}</td>
+                    <td class="small text-dark">{{ c.unloading_location or '—' }}</td>
+                    <td class="text-end">
+                        <div class="btn-group btn-group-sm">
+                            <a href="{{ url_for('driver.edit_customer', customer_id=c.id) }}" class="btn btn-outline-custom" title="Edit Customer">
+                                <i class="fa-regular fa-pen-to-square"></i>
+                            </a>
+                            <form action="{{ url_for('driver.delete_customer', customer_id=c.id) }}" method="POST" onsubmit="return confirm('Remove customer {{ c.company_name }}?');" class="d-inline">
+                                <button type="submit" class="btn btn-outline-custom text-danger" title="Delete">
+                                    <i class="fa-regular fa-trash-can"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-4">No customers found in your portfolio.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

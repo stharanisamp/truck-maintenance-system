@@ -1,0 +1,268 @@
+{% extends 'base.html' %}
+{% block title %}Fleet Vehicles Management{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold text-white mb-1"><i class="fa-solid fa-truck text-warning me-2"></i>Vehicle Fleet Management</h2>
+        <p class="text-muted small mb-0">Manage complete lorry specifications, assigned drivers, RC credentials, insurance renewals, and profit dossiers</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('admin.add_vehicle') }}" class="btn btn-primary">
+            <i class="fa-solid fa-plus me-1"></i> Add New Vehicle
+        </a>
+    </div>
+</div>
+
+<!-- Fleet Status KPI Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3 col-lg">
+        <a href="{{ url_for('admin.vehicles') }}" class="text-decoration-none">
+            <div class="kpi-card text-center {% if not status_filter %}border-primary{% endif %}" style="--accent-color: #3B82F6;">
+                <div class="kpi-value text-white">{{ total_vehicles }}</div>
+                <div class="kpi-label">Total Fleet</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-3 col-lg">
+        <a href="{{ url_for('admin.vehicles', status='Active') }}" class="text-decoration-none">
+            <div class="kpi-card text-center {% if status_filter == 'Active' %}border-success{% endif %}" style="--accent-color: #10B981;">
+                <div class="kpi-value text-success">{{ active_count }}</div>
+                <div class="kpi-label">Active (On Road)</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-3 col-lg">
+        <a href="{{ url_for('admin.vehicles', status='In Trip') }}" class="text-decoration-none">
+            <div class="kpi-card text-center {% if status_filter == 'In Trip' %}border-info{% endif %}" style="--accent-color: #06B6D4;">
+                <div class="kpi-value text-info">{{ trip_count }}</div>
+                <div class="kpi-label">In Trip (Running)</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-3 col-lg">
+        <a href="{{ url_for('admin.vehicles', status='In Maintenance') }}" class="text-decoration-none">
+            <div class="kpi-card text-center {% if status_filter in ['In Maintenance', 'Maintenance'] %}border-warning{% endif %}" style="--accent-color: #F59E0B;">
+                <div class="kpi-value text-warning">{{ maintenance_count }}</div>
+                <div class="kpi-label">In Maintenance</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-3 col-lg">
+        <a href="{{ url_for('admin.vehicles', status='Inactive') }}" class="text-decoration-none">
+            <div class="kpi-card text-center {% if status_filter == 'Inactive' %}border-secondary{% endif %}" style="--accent-color: #94A3B8;">
+                <div class="kpi-value text-muted">{{ inactive_count }}</div>
+                <div class="kpi-label">Inactive (Parked)</div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- Search & Filter Bar -->
+<div class="glass-panel p-3 mb-4">
+    <form method="GET" action="{{ url_for('admin.vehicles') }}" class="row g-2 align-items-center">
+        <div class="col-md-6">
+            <div class="input-group">
+                <span class="input-group-text bg-surface text-muted border-end-0"><i class="fa-solid fa-magnifying-glass"></i></span>
+                <input type="text" name="q" class="form-control border-start-0" placeholder="Search by Vehicle Number (e.g. TN 28 AB 1234), Brand, Model, RC..." value="{{ query }}">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <select name="status" class="form-select">
+                <option value="">All Fleet Statuses</option>
+                <option value="Active" {% if status_filter == 'Active' %}selected{% endif %}>🟢 Active (Ready)</option>
+                <option value="In Trip" {% if status_filter == 'In Trip' %}selected{% endif %}>🔵 In Trip (Running)</option>
+                <option value="In Maintenance" {% if status_filter in ['In Maintenance', 'Maintenance'] %}selected{% endif %}>🟡 In Maintenance (Workshop)</option>
+                <option value="Inactive" {% if status_filter == 'Inactive' %}selected{% endif %}>⚪ Inactive (Parked)</option>
+            </select>
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-primary flex-grow-1"><i class="fa-solid fa-filter me-1"></i> Filter / Search</button>
+            <button type="submit" name="direct" value="1" class="btn btn-outline-custom" title="Direct Dossier Lookup by Vehicle #">
+                <i class="fa-solid fa-bolt"></i> Lookup
+            </button>
+            <a href="{{ url_for('admin.vehicles') }}" class="btn btn-outline-custom" title="Reset Filters"><i class="fa-solid fa-rotate-left"></i></a>
+        </div>
+    </form>
+</div>
+
+<!-- Vehicles Table -->
+<div class="custom-table-card p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold text-white mb-0">
+            <i class="fa-solid fa-list-check text-primary me-2"></i>Fleet Inventory ({{ vehicles|length }} Vehicles)
+        </h5>
+        {% if query %}
+        <span class="badge bg-primary bg-opacity-20 text-primary">Filtered by "{{ query }}"</span>
+        {% endif %}
+    </div>
+
+    <div class="table-responsive">
+        <table class="table custom-table">
+            <thead>
+                <tr>
+                    <th>Vehicle Number</th>
+                    <th>Brand & Model</th>
+                    <th>Type & Capacity</th>
+                    <th>Assigned Driver</th>
+                    <th>RC Number & Expiry</th>
+                    <th>Insurance Expiry</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in vehicles %}
+                <tr>
+                    <!-- Vehicle Number -->
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="p-2 rounded bg-warning bg-opacity-10 text-warning">
+                                <i class="fa-solid fa-truck"></i>
+                            </div>
+                            <div>
+                                <a href="{{ url_for('admin.vehicle_details', vehicle_id=v.id) }}" class="fw-bold font-monospace text-primary text-decoration-none fs-6">
+                                    {{ v.vehicle_number }}
+                                </a>
+                                <div class="small text-muted">{{ v.brand or 'Commercial Truck' }}</div>
+                            </div>
+                        </div>
+                    </td>
+
+                    <!-- Brand & Model -->
+                    <td>
+                        <strong class="text-white small d-block">{{ v.model or 'Standard Model' }}</strong>
+                        <span class="small text-muted">{{ v.brand or '—' }}</span>
+                    </td>
+
+                    <!-- Type & Capacity -->
+                    <td>
+                        <span class="badge bg-secondary bg-opacity-25 text-light">{{ v.vehicle_type }}</span>
+                        <div class="small text-muted mt-1">{{ v.capacity or '—' }}</div>
+                    </td>
+
+                    <!-- Assigned Driver -->
+                    <td>
+                        {% if v.assigned_driver %}
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="p-1 rounded-circle bg-info bg-opacity-10 text-info">
+                                <i class="fa-solid fa-user-check"></i>
+                            </div>
+                            <div>
+                                <a href="{{ url_for('admin.driver_details', driver_id=v.assigned_driver.id) }}" class="small fw-bold text-decoration-none text-light">
+                                    {{ v.assigned_driver.full_name }}
+                                </a>
+                                <div class="small text-muted font-monospace">{{ v.assigned_driver.driver_code }}</div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <span class="badge bg-dark text-muted border border-secondary">Unassigned</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- RC Number & Expiry -->
+                    <td>
+                        <span class="font-monospace text-info small d-block">{{ v.rc_number }}</span>
+                        {% if v.rc_expiry_date %}
+                            <span class="small {% if v.rc_expiry_date < today %}text-danger fw-bold{% else %}text-muted{% endif %}">
+                                Exp: {{ v.rc_expiry_date|date_fmt }}
+                            </span>
+                        {% else %}
+                            <span class="small text-muted">—</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Insurance Expiry -->
+                    <td>
+                        {% if v.insurance_expiry_date %}
+                            {% if v.insurance_expiry_date < today %}
+                                <span class="badge bg-danger text-white">Expired ({{ v.insurance_expiry_date|date_fmt }})</span>
+                            {% elif (v.insurance_expiry_date - today).days <= 30 %}
+                                <span class="badge bg-warning text-dark">Expiring ({{ v.insurance_expiry_date|date_fmt }})</span>
+                            {% else %}
+                                <span class="text-muted small">{{ v.insurance_expiry_date|date_fmt }}</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="text-muted small">Not Set</span>
+                        {% endif %}
+                        {% if v.insurance_number %}
+                        <div class="small text-muted font-monospace">{{ v.insurance_number }}</div>
+                        {% endif %}
+                    </td>
+
+                    <!-- Status -->
+                    <td>
+                        {% if v.status == 'Active' %}
+                        <span class="badge-status badge-active">Active</span>
+                        {% elif v.status == 'In Trip' %}
+                        <span class="badge bg-info bg-opacity-20 text-info border border-info border-opacity-30">In Trip</span>
+                        {% elif v.status in ['In Maintenance', 'Maintenance'] %}
+                        <span class="badge-status badge-warning">In Maintenance</span>
+                        {% else %}
+                        <span class="badge-status badge-loss">Inactive</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Actions -->
+                    <td class="text-end">
+                        <div class="btn-group btn-group-sm">
+                            <a href="{{ url_for('admin.vehicle_details', vehicle_id=v.id) }}" class="btn btn-outline-custom" title="View Complete Dossier & Profit Analysis">
+                                <i class="fa-regular fa-eye"></i>
+                            </a>
+                            <a href="{{ url_for('admin.edit_vehicle', vehicle_id=v.id) }}" class="btn btn-outline-custom" title="Edit Vehicle Credentials">
+                                <i class="fa-regular fa-pen-to-square"></i>
+                            </a>
+                            <button type="button" class="btn btn-outline-custom text-warning" title="Quick Renew Insurance" data-bs-toggle="modal" data-bs-target="#renewModal{{ v.id }}">
+                                <i class="fa-solid fa-shield-halved"></i>
+                            </button>
+                            <form action="{{ url_for('admin.delete_vehicle', vehicle_id=v.id) }}" method="POST" onsubmit="return confirm('Permanently delete vehicle {{ v.vehicle_number }}?');" class="d-inline">
+                                <button type="submit" class="btn btn-outline-custom text-danger" title="Delete Vehicle Record">
+                                    <i class="fa-regular fa-trash-can"></i>
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Quick Renew Insurance Modal -->
+                        <div class="modal fade" id="renewModal{{ v.id }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content glass-panel border-warning">
+                                    <div class="modal-header border-secondary">
+                                        <h5 class="modal-title text-white">
+                                            <i class="fa-solid fa-shield-halved text-warning me-2"></i>Renew Insurance: {{ v.vehicle_number }}
+                                        </h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <form action="{{ url_for('admin.renew_vehicle_insurance', vehicle_id=v.id) }}" method="POST">
+                                        <div class="modal-body text-start">
+                                            <div class="mb-3">
+                                                <label class="form-label text-light small">Policy / Certificate Number</label>
+                                                <input type="text" name="insurance_number" class="form-control font-monospace" value="{{ v.insurance_number or '' }}" placeholder="e.g. INS-HDFC-998822" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label text-light small">New Insurance Expiry Date</label>
+                                                <input type="date" name="insurance_expiry_date" class="form-control" value="{{ v.insurance_expiry_date.strftime('%Y-%m-%d') if v.insurance_expiry_date else '' }}" required>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer border-secondary">
+                                            <button type="button" class="btn btn-outline-custom" data-bs-dismiss="modal">Cancel</button>
+                                            <button type="submit" class="btn btn-primary">Save Renewal</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-4">
+                        <i class="fa-solid fa-truck-ramp-box fs-3 mb-2 d-block"></i>
+                        No vehicles matching your query found.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

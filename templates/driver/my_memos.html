@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block title %}My Trip History{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold text-white mb-1"><i class="fa-solid fa-clock-rotate-left text-info me-2"></i>My Trip Memo History</h2>
+        <p class="text-muted small mb-0">Record of your digitized trip slips, freight earnings, advances, and calculated profitability</p>
+    </div>
+    <a href="{{ url_for('driver.upload_memo') }}" class="btn btn-primary">
+        <i class="fa-solid fa-camera me-1"></i> Upload New Trip Memo
+    </a>
+</div>
+
+<!-- Search Bar -->
+<div class="glass-panel p-3 mb-4">
+    <form method="GET" action="{{ url_for('driver.my_memos') }}" class="d-flex gap-2">
+        <div class="input-group">
+            <span class="input-group-text bg-surface text-muted border-end-0"><i class="fa-solid fa-magnifying-glass"></i></span>
+            <input type="text" name="q" class="form-control border-start-0" placeholder="Search by memo #, vehicle, or route..." value="{{ search }}">
+        </div>
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-filter me-1"></i> Search</button>
+        <a href="{{ url_for('driver.my_memos') }}" class="btn btn-outline-custom"><i class="fa-solid fa-rotate-left"></i></a>
+    </form>
+</div>
+
+<!-- Memos List -->
+<div class="custom-table-card p-4">
+    <div class="table-responsive">
+        <table class="table custom-table">
+            <thead>
+                <tr>
+                    <th>Memo #</th>
+                    <th>Date</th>
+                    <th>Vehicle</th>
+                    <th>Route</th>
+                    <th>Freight (INR)</th>
+                    <th>Advance</th>
+                    <th>Expenses</th>
+                    <th>Trip Profit</th>
+                    <th>Status</th>
+                    <th class="text-end">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in memos %}
+                <tr>
+                    <td class="fw-bold font-monospace text-primary">{{ m.memo_number }}</td>
+                    <td class="small text-muted">{{ m.memo_date|date_fmt }}</td>
+                    <td class="small font-monospace fw-bold text-dark">{{ m.vehicle.vehicle_number if m.vehicle else (m.vehicle_number_text or '—') }}</td>
+                    <td class="small text-dark">{{ m.source }} &rarr; {{ m.destination }}</td>
+                    <td class="small fw-bold text-dark">{{ m.freight_amount|currency }}</td>
+                    <td class="small text-danger">{{ m.advance_amount|currency }}</td>
+                    <td class="small text-muted">{{ m.total_expense|currency }}</td>
+                    <td class="small fw-bold {% if m.profit >= 0 %}text-success{% else %}text-danger{% endif %}">{{ m.profit|currency }}</td>
+                    <td>
+                        <span class="badge-status {% if m.status == 'Profit' %}badge-profit{% else %}badge-loss{% endif %}">{{ m.status }}</span>
+                    </td>
+                    <td class="text-end">
+                        <a href="{{ url_for('driver.export_memo_excel', memo_id=m.id) }}" class="btn btn-outline-success btn-sm me-1" title="Download Excel Sheet (.xlsx)">
+                            <i class="fa-solid fa-file-excel"></i>
+                        </a>
+                        {% if m.memo_file_path %}
+                        <a href="{{ url_for('static', filename=m.memo_file_path) }}" target="_blank" class="btn btn-outline-custom btn-sm text-info" title="Download / View Original Slip">
+                            <i class="fa-solid fa-image"></i>
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="10" class="text-center text-muted py-4">No trip memos found in your records.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

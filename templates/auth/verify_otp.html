@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block title %}Verify Email OTP - Truck Maintenance System{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center min-vh-75 py-5">
+    <div class="col-12 col-md-8 col-lg-5">
+        <div class="glass-panel p-4 p-md-5 text-center">
+            <div class="d-inline-flex align-items-center justify-content-center p-3 rounded-circle bg-primary bg-opacity-10 text-primary mb-3">
+                <i class="fa-solid fa-envelope-circle-check fs-1"></i>
+            </div>
+            
+            <h3 class="fw-bold text-white mb-1">Email Verification</h3>
+            <p class="text-muted small mb-2">
+                {% if purpose == 'PASSWORD_RESET' %}
+                    Reset Password verification code sent to:
+                {% else %}
+                    Account registration verification code sent to:
+                {% endif %}
+            </p>
+            <div class="badge bg-surface-elevated text-info border border-info border-opacity-25 px-3 py-2 fs-6 mb-4">
+                <i class="fa-regular fa-envelope me-1"></i> {{ email }}
+            </div>
+
+            <form method="POST" action="{{ url_for('auth.verify_otp_view') }}">
+                <div class="mb-4">
+                    <label class="form-label d-block text-center mb-2">Enter 6-Digit OTP Code</label>
+                    <input type="text" name="otp" class="form-control otp-box mx-auto" placeholder="••••••" maxlength="6" pattern="[0-9]{6}" required autofocus inputmode="numeric" autocomplete="one-time-code" style="max-width: 280px;">
+                    <div class="form-text text-muted small mt-2">
+                        <i class="fa-regular fa-clock me-1"></i> Code valid for 10 minutes.
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 py-2 fs-6 mb-3">
+                    <i class="fa-solid fa-circle-check me-2"></i> Verify Code & Continue
+                </button>
+
+                <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top border-secondary small">
+                    <a href="{{ url_for('auth.resend_otp') }}" class="text-primary fw-semibold text-decoration-none">
+                        <i class="fa-solid fa-rotate-right me-1"></i> Resend OTP Code
+                    </a>
+                    <a href="{{ url_for('auth.login') }}" class="text-muted text-decoration-none">
+                        <i class="fa-solid fa-arrow-left me-1"></i> Back to Login
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

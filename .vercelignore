@@ -1,0 +1,13 @@
+.git
+.github
+.vscode
+.ruff_cache
+__pycache__
+*.pyc
+scratch/
+Project_Report/
+Complete_Project_Documentation.docx
+Complete_Project_Documentation.pdf
+truck_maintenance_system.db
+*.db
+.env

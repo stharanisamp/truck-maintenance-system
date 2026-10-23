@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}System Alerts & Notifications{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold text-white mb-1"><i class="fa-solid fa-bell text-warning me-2"></i>Notifications & Audit Center</h2>
+        <p class="text-muted small mb-0">Live alerts for fuel pilferage, memo uploads, driver registrations, and compliance expiries</p>
+    </div>
+    <form method="POST" action="{{ url_for('admin.mark_all_read') }}">
+        <button type="submit" class="btn btn-outline-custom btn-sm">
+            <i class="fa-solid fa-check-double me-1"></i> Mark All as Read
+        </button>
+    </form>
+</div>
+
+<div class="custom-table-card p-4">
+    <div class="d-flex flex-column gap-3">
+        {% for n in notifications %}
+        <div class="d-flex align-items-start justify-content-between gap-3 p-3 rounded {% if not n.is_read %}border border-primary border-opacity-25{% endif %}" style="background: rgba(255,255,255,0.02);">
+            <div class="d-flex align-items-start gap-3">
+                <div class="p-3 rounded-circle {% if n.severity == 'High Risk' %}bg-danger text-danger{% elif n.severity == 'Warning' %}bg-warning text-warning{% else %}bg-primary text-primary{% endif %} bg-opacity-10 mt-1">
+                    <i class="fa-solid {% if n.alert_type == 'FUEL_THEFT' %}fa-gas-pump{% elif 'EXPIRY' in n.alert_type %}fa-shield-halved{% elif n.alert_type == 'NEW_DRIVER' %}fa-user-plus{% else %}fa-receipt{% endif %} fs-5"></i>
+                </div>
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <strong class="text-white fs-6">{{ n.title }}</strong>
+                        {% if n.severity == 'High Risk' %}
+                        <span class="badge bg-danger rounded-pill">High Risk</span>
+                        {% elif n.severity == 'Warning' %}
+                        <span class="badge bg-warning text-dark rounded-pill">Warning</span>
+                        {% else %}
+                        <span class="badge bg-primary rounded-pill">Normal</span>
+                        {% endif %}
+
+                        {% if not n.is_read %}
+                        <span class="badge bg-info text-dark rounded-pill">New</span>
+                        {% endif %}
+                    </div>
+                    <p class="text-muted small mb-2">{{ n.message }}</p>
+                    <span class="text-muted" style="font-size: 0.75rem;">
+                        <i class="fa-regular fa-clock me-1"></i> {{ n.created_at.strftime('%d-%b-%Y %I:%M %p') if n.created_at else '' }}
+                    </span>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                {% if n.link %}
+                <a href="{{ n.link }}" class="btn btn-outline-custom btn-sm text-nowrap">View Action</a>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-5">
+            <i class="fa-regular fa-bell-slash fs-1 d-block mb-3"></i>
+            No notifications recorded in the system.
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

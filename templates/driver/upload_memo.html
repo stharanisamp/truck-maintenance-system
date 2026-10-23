@@ -1,0 +1,375 @@
+{% extends 'base.html' %}
+{% block title %}Handwritten Lorry Memo Upload & AI Extraction{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-3">
+    <div class="col-12 col-lg-10 col-xl-9">
+        <div class="glass-panel p-4 p-md-5">
+            <!-- Header -->
+            <div class="d-flex align-items-center justify-content-between mb-4 border-bottom border-secondary pb-3 flex-wrap gap-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="p-3 rounded-circle bg-primary bg-opacity-10 text-primary">
+                        <i class="fa-solid fa-wand-magic-sparkles fs-2"></i>
+                    </div>
+                    <div>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <h3 class="fw-bold text-white mb-0">Handwritten Lorry Memo Scanner</h3>
+                            <span class="badge bg-success rounded-pill px-2 py-1 small">
+                                <i class="fa-solid fa-language me-1"></i> தமிழ் + English
+                            </span>
+                        </div>
+                        <p class="text-muted small mb-0">
+                            Upload or capture a photo of your trip memo. The AI automatically removes shadows, corrects tilt, reads Tamil and English handwriting, validates math, and auto-fills every field.
+                        </p>
+                    </div>
+                </div>
+                <div class="text-end d-none d-md-block">
+                    <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-3 py-2">
+                        <i class="fa-solid fa-shield-halved me-1"></i> 100% Verified Archive
+                    </span>
+                </div>
+            </div>
+
+            <!-- Upload Form -->
+            <form method="POST" action="{{ url_for('driver.upload_memo') }}" enctype="multipart/form-data" id="memoUploadForm">
+                <input type="hidden" name="sample_choice" id="sampleChoiceInput" value="">
+
+                <div class="mb-4">
+                    <div class="p-4 p-md-5 text-center rounded-3 border-2 border-dashed position-relative transition-all" 
+                         style="background: rgba(255,255,255,0.02); border-color: rgba(59, 130, 246, 0.45); cursor: pointer;" 
+                         id="dropZone">
+                        
+                        <div id="uploadPromptContainer">
+                            <div class="d-inline-flex p-3 rounded-circle bg-primary bg-opacity-10 text-primary mb-3">
+                                <i class="fa-solid fa-cloud-arrow-up fs-1"></i>
+                            </div>
+                            <h5 class="fw-bold text-white mb-1">Drag and drop your handwritten memo photo here</h5>
+                            <p class="text-muted small mb-3">Supports mobile camera photos, carbon-copy slips, low light, and tilted documents (JPG, JPEG, PNG, WEBP, PDF)</p>
+                            
+                            <div class="d-flex justify-content-center gap-2 flex-wrap">
+                                <!-- Standard File Input Button -->
+                                <label for="memoFileInput" class="btn btn-outline-primary px-3 py-2 btn-sm mb-0">
+                                    <i class="fa-solid fa-folder-open me-2"></i> Browse Memo Image
+                                </label>
+                                <!-- Dedicated Camera Capture Button for Mobile / Tablet -->
+                                <label for="cameraFileInput" class="btn btn-outline-success px-3 py-2 btn-sm mb-0">
+                                    <i class="fa-solid fa-camera me-2"></i> Take Camera Photo
+                                </label>
+                            </div>
+
+                            <input type="file" name="memo_file" id="memoFileInput" class="d-none" accept=".jpg,.jpeg,.png,.webp,.pdf">
+                            <input type="file" id="cameraFileInput" class="d-none" accept="image/*" capture="environment">
+                        </div>
+
+                        <!-- Image Preview (Shown after file selection) -->
+                        <div id="imagePreviewContainer" class="d-none mt-2">
+                            <div class="position-relative d-inline-block">
+                                <img id="imagePreview" src="" alt="Selected Memo" class="img-fluid rounded border border-secondary shadow-lg transition-all" style="max-height: 320px; object-fit: contain; transition: transform 0.2s ease;">
+                                <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 m-2 rounded-circle" id="removeFileBtn" title="Choose a different image">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </div>
+                            
+                            <!-- Driver Image Orientation Controls -->
+                            <div class="mt-2 d-flex justify-content-center align-items-center gap-2 flex-wrap">
+                                <button type="button" class="btn btn-sm btn-outline-info" id="btnRotateLeft" title="Rotate Left 90°">
+                                    <i class="fa-solid fa-rotate-left me-1"></i> Rotate Left (90°)
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-info" id="btnRotateRight" title="Rotate Right 90°">
+                                    <i class="fa-solid fa-rotate-right me-1"></i> Rotate Right (90°)
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnRotateReset" title="Reset Rotation">
+                                    <i class="fa-solid fa-arrow-rotate-right me-1"></i> Reset
+                                </button>
+                            </div>
+                            <input type="hidden" name="user_rotation" id="userRotationInput" value="0">
+
+                            <div class="mt-2 d-flex justify-content-center align-items-center gap-3">
+                                <span class="text-success small">
+                                    <i class="fa-solid fa-circle-check me-1"></i> Ready for AI Recognition
+                                </span>
+                                <span class="text-muted small" id="imageFileName"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center pt-2">
+                    <a href="{{ url_for('driver.dashboard') }}" class="btn btn-outline-custom">
+                        <i class="fa-solid fa-arrow-left me-1"></i> Dashboard
+                    </a>
+                    <button type="submit" class="btn btn-primary px-4 py-2 fs-6 shadow-sm fw-bold" id="submitBtn">
+                        <i class="fa-solid fa-wand-magic-sparkles me-2"></i> Extract Details (விவரங்களை எடு)
+                    </button>
+                </div>
+            </form>
+
+            <!-- Multi-Stage AI Scanner Loading Animation (5 Stages) -->
+            <div id="ocrLoadingSpinner" class="text-center py-5 d-none">
+                <div class="spinner-grow text-primary mb-3" style="width: 3.5rem; height: 3.5rem;" role="status">
+                    <span class="visually-hidden">Extracting details...</span>
+                </div>
+                <h4 class="fw-bold text-white mb-2">Processing Handwritten Memo...</h4>
+                <p class="text-muted small mb-4">Please wait while the computer vision and AI pipeline analyzes the memo:</p>
+
+                <div class="card p-3 mx-auto text-start shadow-lg" style="max-width: 520px; background: rgba(17, 27, 49, 0.95); border: 1px solid var(--border-highlight);">
+                    <div class="d-flex align-items-center gap-3 mb-2 text-info small" id="stage1">
+                        <i class="fa-solid fa-circle-notch fa-spin"></i>
+                        <span><strong>Stage 1:</strong> Image Preprocessing & Shadow Removal</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-3 mb-2 text-muted small" id="stage2">
+                        <i class="fa-regular fa-circle"></i>
+                        <span><strong>Stage 2:</strong> Handwriting Recognition (Tamil + English OCR)</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-3 mb-2 text-muted small" id="stage3">
+                        <i class="fa-regular fa-circle"></i>
+                        <span><strong>Stage 3:</strong> AI Semantic Understanding & Synonym Mapping</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-3 mb-2 text-muted small" id="stage4">
+                        <i class="fa-regular fa-circle"></i>
+                        <span><strong>Stage 4:</strong> Mathematical Validation & Vehicle Verification</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-3 text-muted small" id="stage5">
+                        <i class="fa-regular fa-circle"></i>
+                        <span><strong>Stage 5:</strong> Form Auto-Fill & Confidence Scoring</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Instant 1-Click Sample Memos for Quick Testing -->
+            <div class="mt-4 pt-3 border-top border-secondary">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <div class="small fw-bold text-muted text-uppercase letter-spacing-1">
+                        <i class="fa-solid fa-vial text-info me-1"></i> Quick Test: Instant 1-Click Handwritten Samples
+                    </div>
+                    <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 small">
+                        Click to test immediately
+                    </span>
+                </div>
+                <p class="text-muted small mb-3">
+                    Test how the pipeline automatically normalizes Tamil handwriting, spelling mistakes ("Diecel 4500"), and cross-reconciles totals:
+                </p>
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <button type="button" class="btn btn-outline-custom w-100 text-start p-2" onclick="testSample('sample_memo_1.png')">
+                            <div class="fw-semibold text-white small">
+                                <i class="fa-solid fa-file-invoice text-success me-1"></i> Sample 1: English Memo
+                            </div>
+                            <div class="text-muted" style="font-size: 0.75rem;">Ariyalur → Chennai | TN 28 AB 1234 (₹48,000)</div>
+                        </button>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="button" class="btn btn-outline-custom w-100 text-start p-2" onclick="testSample('sample_memo_2.png')">
+                            <div class="fw-semibold text-white small">
+                                <i class="fa-solid fa-file-invoice text-info me-1"></i> Sample 2: Tamil Memo (தமிழ்)
+                            </div>
+                            <div class="text-muted" style="font-size: 0.75rem;">சேலம் → கோவை | டீசல் 4500, ஓட்டுநர் குமார்</div>
+                        </button>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="button" class="btn btn-outline-custom w-100 text-start p-2" onclick="testSample('sample_memo_3.png')">
+                            <div class="fw-semibold text-white small">
+                                <i class="fa-solid fa-file-invoice text-warning me-1"></i> Sample 3: Mixed Tanglish Memo
+                            </div>
+                            <div class="text-muted" style="font-size: 0.75rem;">Hosur → Tuticorin | Diesel ₹5200, சுங்கம் ₹800</div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const memoFileInput = document.getElementById('memoFileInput');
+const cameraFileInput = document.getElementById('cameraFileInput');
+const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+const imagePreview = document.getElementById('imagePreview');
+const uploadPromptContainer = document.getElementById('uploadPromptContainer');
+const removeFileBtn = document.getElementById('removeFileBtn');
+const memoUploadForm = document.getElementById('memoUploadForm');
+const ocrLoadingSpinner = document.getElementById('ocrLoadingSpinner');
+const sampleChoiceInput = document.getElementById('sampleChoiceInput');
+const dropZone = document.getElementById('dropZone');
+const imageFileName = document.getElementById('imageFileName');
+
+function handleFileSelection(file) {
+    if (!file) return;
+    if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            imagePreview.src = evt.target.result;
+            imagePreviewContainer.classList.remove('d-none');
+            uploadPromptContainer.classList.add('d-none');
+            if (imageFileName) {
+                imageFileName.innerText = file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
+            }
+        };
+        reader.readAsDataURL(file);
+    } else {
+        imagePreviewContainer.classList.add('d-none');
+        uploadPromptContainer.classList.remove('d-none');
+    }
+}
+
+memoFileInput.addEventListener('change', function() {
+    if (this.files && this.files[0]) {
+        handleFileSelection(this.files[0]);
+    }
+});
+
+cameraFileInput.addEventListener('change', function() {
+    if (this.files && this.files[0]) {
+        // Sync to the form input
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(this.files[0]);
+        memoFileInput.files = dataTransfer.files;
+        handleFileSelection(this.files[0]);
+    }
+});
+
+// Drag and drop handlers
+dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.style.borderColor = '#10B981';
+    dropZone.style.background = 'rgba(16, 185, 129, 0.05)';
+});
+
+dropZone.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    dropZone.style.borderColor = 'rgba(59, 130, 246, 0.45)';
+    dropZone.style.background = 'rgba(255,255,255,0.02)';
+});
+
+dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.style.borderColor = 'rgba(59, 130, 246, 0.45)';
+    dropZone.style.background = 'rgba(255,255,255,0.02)';
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        const file = e.dataTransfer.files[0];
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        memoFileInput.files = dataTransfer.files;
+        handleFileSelection(file);
+    }
+});
+
+let currentPreviewRotation = 0;
+const userRotationInput = document.getElementById('userRotationInput');
+const btnRotateLeft = document.getElementById('btnRotateLeft');
+const btnRotateRight = document.getElementById('btnRotateRight');
+const btnRotateReset = document.getElementById('btnRotateReset');
+
+function updatePreviewRotation() {
+    if (imagePreview) {
+        imagePreview.style.transform = `rotate(${currentPreviewRotation}deg)`;
+    }
+    if (userRotationInput) {
+        userRotationInput.value = currentPreviewRotation;
+    }
+}
+
+if (btnRotateLeft) {
+    btnRotateLeft.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        currentPreviewRotation = (currentPreviewRotation - 90 + 360) % 360;
+        updatePreviewRotation();
+    });
+}
+
+if (btnRotateRight) {
+    btnRotateRight.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        currentPreviewRotation = (currentPreviewRotation + 90) % 360;
+        updatePreviewRotation();
+    });
+}
+
+if (btnRotateReset) {
+    btnRotateReset.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        currentPreviewRotation = 0;
+        updatePreviewRotation();
+    });
+}
+
+removeFileBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    memoFileInput.value = '';
+    cameraFileInput.value = '';
+    imagePreview.src = '';
+    currentPreviewRotation = 0;
+    updatePreviewRotation();
+    imagePreviewContainer.classList.add('d-none');
+    uploadPromptContainer.classList.remove('d-none');
+});
+
+function animateLoadingStages() {
+    memoUploadForm.classList.add('d-none');
+    ocrLoadingSpinner.classList.remove('d-none');
+
+    // Stage 1 -> 2
+    setTimeout(() => {
+        const s1 = document.getElementById('stage1');
+        if (s1) s1.innerHTML = '<i class="fa-solid fa-check text-success"></i> <span class="text-success"><strong>Stage 1:</strong> Preprocessing & Shadow Removal Complete</span>';
+        const s2 = document.getElementById('stage2');
+        if (s2) {
+            s2.className = 'd-flex align-items-center gap-3 mb-2 text-info small';
+            s2.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> <span><strong>Stage 2:</strong> Recognizing Tamil & English Handwriting...</span>';
+        }
+    }, 1200);
+
+    // Stage 2 -> 3
+    setTimeout(() => {
+        const s2 = document.getElementById('stage2');
+        if (s2) s2.innerHTML = '<i class="fa-solid fa-check text-success"></i> <span class="text-success"><strong>Stage 2:</strong> Handwriting Extracted</span>';
+        const s3 = document.getElementById('stage3');
+        if (s3) {
+            s3.className = 'd-flex align-items-center gap-3 mb-2 text-info small';
+            s3.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> <span><strong>Stage 3:</strong> AI Semantic Mapping & Synonym Normalization...</span>';
+        }
+    }, 2400);
+
+    // Stage 3 -> 4
+    setTimeout(() => {
+        const s3 = document.getElementById('stage3');
+        if (s3) s3.innerHTML = '<i class="fa-solid fa-check text-success"></i> <span class="text-success"><strong>Stage 3:</strong> Fields & Numbers Identified</span>';
+        const s4 = document.getElementById('stage4');
+        if (s4) {
+            s4.className = 'd-flex align-items-center gap-3 mb-2 text-info small';
+            s4.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> <span><strong>Stage 4:</strong> Reconciling Mathematical Expenses & Vehicle Plate...</span>';
+        }
+    }, 3600);
+
+    // Stage 4 -> 5
+    setTimeout(() => {
+        const s4 = document.getElementById('stage4');
+        if (s4) s4.innerHTML = '<i class="fa-solid fa-check text-success"></i> <span class="text-success"><strong>Stage 4:</strong> Mathematical Check Complete</span>';
+        const s5 = document.getElementById('stage5');
+        if (s5) {
+            s5.className = 'd-flex align-items-center gap-3 text-info small';
+            s5.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> <span><strong>Stage 5:</strong> Auto-Filling Form & Attaching Confidence Scores...</span>';
+        }
+    }, 4800);
+}
+
+memoUploadForm.addEventListener('submit', function(e) {
+    if (!sampleChoiceInput.value && (!memoFileInput.files || memoFileInput.files.length === 0)) {
+        e.preventDefault();
+        alert('Please choose or capture a handwritten memo photo first.');
+        return;
+    }
+    animateLoadingStages();
+});
+
+function testSample(filename) {
+    sampleChoiceInput.value = filename;
+    memoFileInput.removeAttribute('required');
+    animateLoadingStages();
+    memoUploadForm.submit();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,409 @@
+{% extends 'base.html' %}
+{% block title %}Owner Executive Dashboard{% endblock %}
+
+{% block content %}
+<div id="analyticsDashboardWrapper">
+    <!-- Header Title & Quick Actions Row -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold text-white mb-1">Fleet Operations & Financial Intelligence</h2>
+            <p class="text-muted small mb-0">Live AI Memo Digitization, Real-Time Profit Auditing & Fuel Pilferage Monitoring</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{ url_for('admin.export_report', format_type='pdf', type='memo') }}" class="btn btn-outline-custom btn-sm">
+                <i class="fa-solid fa-file-pdf text-danger me-1"></i> Export PDF
+            </a>
+            <a href="{{ url_for('admin.export_report', format_type='docx', type='memo') }}" class="btn btn-outline-custom btn-sm">
+                <i class="fa-solid fa-file-word text-primary me-1"></i> Export DOCX
+            </a>
+            <a href="{{ url_for('admin.add_driver') }}" class="btn btn-primary btn-sm">
+                <i class="fa-solid fa-user-plus me-1"></i> Add Driver
+            </a>
+            <a href="{{ url_for('admin.add_vehicle') }}" class="btn btn-primary btn-sm">
+                <i class="fa-solid fa-truck me-1"></i> Add Vehicle
+            </a>
+        </div>
+    </div>
+
+    <!-- CRITICAL ALERTS BANNER (If any near-expiry or high-risk fuel theft) -->
+    {% if expiring_insurance or expiring_licenses or suspicious_alerts_count > 0 %}
+    <div class="mb-4">
+        {% if suspicious_alerts_count > 0 %}
+        <div class="alert alert-danger d-flex align-items-center justify-content-between p-3 rounded-3 mb-2" style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3);">
+            <div class="d-flex align-items-center gap-3">
+                <i class="fa-solid fa-triangle-exclamation fs-4 text-danger"></i>
+                <div>
+                    <strong class="text-danger">Fuel Pilferage / Anomaly Detected!</strong>
+                    <div class="text-light small">{{ suspicious_alerts_count }} trip(s) have logged unusual fuel consumption exceeding standard route allowances.</div>
+                </div>
+            </div>
+            <a href="{{ url_for('admin.fuel_monitoring') }}" class="btn btn-danger btn-sm text-nowrap">Audit Fuel Logs</a>
+        </div>
+        {% endif %}
+
+        {% for v in expiring_insurance %}
+        <div class="alert alert-warning d-flex align-items-center justify-content-between p-3 rounded-3 mb-2" style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3);">
+            <div class="d-flex align-items-center gap-3">
+                <i class="fa-solid fa-shield-halved fs-4 text-warning"></i>
+                <div>
+                    <strong class="text-warning">Vehicle Insurance Expiry Warning: {{ v.vehicle_number }}</strong>
+                    <div class="text-light small">Policy #{{ v.insurance_number }} expires on {{ v.insurance_expiry_date|date_fmt }}. Immediate renewal needed.</div>
+                </div>
+            </div>
+            <a href="{{ url_for('admin.vehicle_details', vehicle_id=v.id) }}" class="btn btn-warning btn-sm text-dark text-nowrap">View Vehicle</a>
+        </div>
+        {% endfor %}
+
+        {% for d in expiring_licenses %}
+        <div class="alert alert-warning d-flex align-items-center justify-content-between p-3 rounded-3 mb-2" style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3);">
+            <div class="d-flex align-items-center gap-3">
+                <i class="fa-solid fa-id-card fs-4 text-warning"></i>
+                <div>
+                    <strong class="text-warning">Driver License Expiry Alert: {{ d.full_name }}</strong>
+                    <div class="text-light small">Driving License #{{ d.license_number }} expires on {{ d.license_expiry_date|date_fmt }}.</div>
+                </div>
+            </div>
+            <a href="{{ url_for('admin.driver_details', driver_id=d.id) }}" class="btn btn-warning btn-sm text-dark text-nowrap">View Driver</a>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- 10 KPI DASHBOARD CARDS -->
+    <div class="row g-3 mb-4">
+        <!-- 1. Total Revenue -->
+        <div class="col-6 col-md-4 col-xl-2-4">
+            <div class="kpi-card" style="--accent-color: #3B82F6;">
+                <div class="kpi-icon-box bg-primary bg-opacity-10 text-primary">
+                    <i class="fa-solid fa-coins"></i>
+                </div>
+                <div class="kpi-value text-primary">{{ total_revenue|currency }}</div>
+                <div class="kpi-label">Total Revenue</div>
+            </div>
+        </div>
+
+        <!-- 2. Total Expenses -->
+        <div class="col-6 col-md-4 col-xl-2-4">
+            <div class="kpi-card" style="--accent-color: #F59E0B;">
+                <div class="kpi-icon-box bg-warning bg-opacity-10 text-warning">
+                    <i class="fa-solid fa-money-bill-transfer"></i>
+                </div>
+                <div class="kpi-value text-warning">{{ total_expenses|currency }}</div>
+                <div class="kpi-label">Total Expenses</div>
+            </div>
+        </div>
+
+        <!-- 3. Total Profit -->
+        <div class="col-6 col-md-4 col-xl-2-4">
+            <div class="kpi-card" style="--accent-color: #10B981;">
+                <div class="kpi-icon-box bg-success bg-opacity-10 text-success">
+                    <i class="fa-solid fa-arrow-trend-up"></i>
+                </div>
+                <div class="kpi-value text-success">{{ total_profit|currency }}</div>
+                <div class="kpi-label">Total Profit</div>
+            </div>
+        </div>
+
+        <!-- 4. Total Loss -->
+        <div class="col-6 col-md-4 col-xl-2-4">
+            <div class="kpi-card" style="--accent-color: #EF4444;">
+                <div class="kpi-icon-box bg-danger bg-opacity-10 text-danger">
+                    <i class="fa-solid fa-arrow-trend-down"></i>
+                </div>
+                <div class="kpi-value text-danger">{{ total_loss|currency }}</div>
+                <div class="kpi-label">Total Loss</div>
+            </div>
+        </div>
+
+        <!-- 5. Suspicious Fuel Alerts -->
+        <div class="col-6 col-md-4 col-xl-2-4">
+            <div class="kpi-card" style="--accent-color: #EC4899;">
+                <div class="kpi-icon-box bg-danger bg-opacity-10 text-danger">
+                    <i class="fa-solid fa-gas-pump"></i>
+                </div>
+                <div class="kpi-value text-danger">{{ suspicious_alerts_count }}</div>
+                <div class="kpi-label">Suspicious Fuel Alerts</div>
+            </div>
+        </div>
+
+        <!-- 6. Total Drivers -->
+        <div class="col-6 col-md-4 col-xl-2-4">
+            <div class="kpi-card" style="--accent-color: #06B6D4;">
+                <div class="kpi-icon-box bg-info bg-opacity-10 text-info">
+                    <i class="fa-solid fa-id-badge"></i>
+                </div>
+                <div class="kpi-value">{{ total_drivers }}</div>
+                <div class="kpi-label">Total Drivers</div>
+            </div>
+        </div>
+
+        <!-- 7. Total Vehicles -->
+        <div class="col-6 col-md-4 col-xl-2-4">
+            <div class="kpi-card" style="--accent-color: #8B5CF6;">
+                <div class="kpi-icon-box bg-purple bg-opacity-10 text-purple">
+                    <i class="fa-solid fa-truck-moving"></i>
+                </div>
+                <div class="kpi-value">{{ total_vehicles }}</div>
+                <div class="kpi-label">Total Vehicles</div>
+            </div>
+        </div>
+
+        <!-- 8. Total Customers -->
+        <div class="col-6 col-md-4 col-xl-2-4">
+            <div class="kpi-card" style="--accent-color: #38BDF8;">
+                <div class="kpi-icon-box bg-primary bg-opacity-10 text-info">
+                    <i class="fa-solid fa-building-user"></i>
+                </div>
+                <div class="kpi-value">{{ total_customers }}</div>
+                <div class="kpi-label">Total Customers</div>
+            </div>
+        </div>
+
+        <!-- 9. Total Memos Uploaded -->
+        <div class="col-6 col-md-4 col-xl-2-4">
+            <div class="kpi-card" style="--accent-color: #14B8A6;">
+                <div class="kpi-icon-box bg-success bg-opacity-10 text-success">
+                    <i class="fa-solid fa-file-invoice-dollar"></i>
+                </div>
+                <div class="kpi-value">{{ total_memos }}</div>
+                <div class="kpi-label">Memos Uploaded</div>
+            </div>
+        </div>
+
+        <!-- 10. Total Fuel Bills Uploaded -->
+        <div class="col-6 col-md-4 col-xl-2-4">
+            <div class="kpi-card" style="--accent-color: #F97316;">
+                <div class="kpi-icon-box bg-warning bg-opacity-10 text-warning">
+                    <i class="fa-solid fa-receipt"></i>
+                </div>
+                <div class="kpi-value">{{ total_fuel_bills }}</div>
+                <div class="kpi-label">Fuel Bills Uploaded</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QUICK ACTIONS BAR -->
+    <div class="glass-panel p-3 mb-4">
+        <div class="d-flex flex-wrap gap-3 align-items-center justify-content-between">
+            <div class="fw-bold small text-muted text-uppercase letter-spacing-1">
+                <i class="fa-solid fa-bolt text-warning me-2"></i> Quick Actions:
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{{ url_for('admin.add_driver') }}" class="quick-action-btn py-2 px-3">
+                    <i class="fa-solid fa-user-plus text-primary"></i> <span>Add Driver</span>
+                </a>
+                <a href="{{ url_for('admin.add_vehicle') }}" class="quick-action-btn py-2 px-3">
+                    <i class="fa-solid fa-truck text-warning"></i> <span>Add Vehicle</span>
+                </a>
+                <a href="{{ url_for('admin.memos') }}" class="quick-action-btn py-2 px-3">
+                    <i class="fa-solid fa-file-lines text-success"></i> <span>View Memos</span>
+                </a>
+                <a href="{{ url_for('admin.fuel_monitoring') }}" class="quick-action-btn py-2 px-3">
+                    <i class="fa-solid fa-gas-pump text-danger"></i> <span>View Fuel Bills</span>
+                </a>
+                <a href="{{ url_for('admin.reports') }}" class="quick-action-btn py-2 px-3">
+                    <i class="fa-solid fa-chart-pie text-purple"></i> <span>Generate Reports</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 8 DASHBOARD CHARTS GRID -->
+    <div class="row g-4 mb-4">
+        <!-- 1. Monthly Revenue Chart -->
+        <div class="col-12 col-lg-6 col-xl-4">
+            <div class="glass-panel p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-white mb-0"><i class="fa-solid fa-chart-area text-primary me-2"></i>Monthly Revenue</h5>
+                    <span class="badge bg-primary bg-opacity-25 text-primary">INR</span>
+                </div>
+                <div style="height: 250px;">
+                    <canvas id="monthlyRevenueChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Monthly Expense Chart -->
+        <div class="col-12 col-lg-6 col-xl-4">
+            <div class="glass-panel p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-white mb-0"><i class="fa-solid fa-chart-line text-danger me-2"></i>Monthly Expenses</h5>
+                    <span class="badge bg-danger bg-opacity-25 text-danger">Operating</span>
+                </div>
+                <div style="height: 250px;">
+                    <canvas id="monthlyExpenseChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Monthly Profit Chart -->
+        <div class="col-12 col-lg-6 col-xl-4">
+            <div class="glass-panel p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-white mb-0"><i class="fa-solid fa-chart-simple text-success me-2"></i>Monthly Net Profit</h5>
+                    <span class="badge bg-success bg-opacity-25 text-success">P&L</span>
+                </div>
+                <div style="height: 250px;">
+                    <canvas id="monthlyProfitChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Vehicle-wise Revenue Analysis -->
+        <div class="col-12 col-lg-6 col-xl-6">
+            <div class="glass-panel p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-white mb-0"><i class="fa-solid fa-truck text-info me-2"></i>Vehicle-wise Revenue Analysis</h5>
+                    <span class="text-muted small">Top Performing Lorries</span>
+                </div>
+                <div style="height: 260px;">
+                    <canvas id="vehicleRevenueChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. Vehicle-wise Expense Analysis -->
+        <div class="col-12 col-lg-6 col-xl-6">
+            <div class="glass-panel p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-white mb-0"><i class="fa-solid fa-wrench text-warning me-2"></i>Vehicle-wise Expense Analysis</h5>
+                    <span class="text-muted small">Diesel & Toll Breakdown</span>
+                </div>
+                <div style="height: 260px;">
+                    <canvas id="vehicleExpenseChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. Driver-wise Performance Analysis -->
+        <div class="col-12 col-lg-6 col-xl-4">
+            <div class="glass-panel p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-white mb-0"><i class="fa-solid fa-users-gear text-purple me-2"></i>Driver Performance</h5>
+                    <span class="text-muted small">Trips & Revenue</span>
+                </div>
+                <div style="height: 250px;">
+                    <canvas id="driverPerformanceChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 7. Fuel Consumption Analysis (Expected vs Actual) -->
+        <div class="col-12 col-lg-6 col-xl-4">
+            <div class="glass-panel p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-white mb-0"><i class="fa-solid fa-gas-pump text-danger me-2"></i>Fuel Consumption Audit</h5>
+                    <span class="text-muted small">Expected vs Actual (L)</span>
+                </div>
+                <div style="height: 250px;">
+                    <canvas id="fuelConsumptionChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 8. Profit vs Expense Comparison -->
+        <div class="col-12 col-lg-6 col-xl-4">
+            <div class="glass-panel p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-white mb-0"><i class="fa-solid fa-pie-chart text-success me-2"></i>Profit vs Expense Ratio</h5>
+                    <span class="text-muted small">Fleet Overall</span>
+                </div>
+                <div style="height: 250px;">
+                    <canvas id="profitExpensePieChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RECENT ACTIVITY & UPLOADS TABLES -->
+    <div class="row g-4">
+        <!-- Recently Uploaded Memos -->
+        <div class="col-12 col-lg-7">
+            <div class="custom-table-card p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h5 class="fw-bold text-white mb-0"><i class="fa-solid fa-receipt text-primary me-2"></i>Recently Uploaded Trip Memos</h5>
+                        <div class="text-muted small">Verified OCR Trip Entries</div>
+                    </div>
+                    <a href="{{ url_for('admin.memos') }}" class="btn btn-outline-custom btn-sm">View All</a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table custom-table">
+                        <thead>
+                            <tr>
+                                <th>Memo #</th>
+                                <th>Date</th>
+                                <th>Route</th>
+                                <th>Freight</th>
+                                <th>Expenses</th>
+                                <th>Profit</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for m in recent_memos %}
+                            <tr>
+                                <td class="fw-bold text-primary font-monospace">
+                                    <a href="{{ url_for('admin.memo_detail', memo_id=m.id) }}" class="text-primary text-decoration-none">
+                                        {{ m.memo_number }}
+                                    </a>
+                                </td>
+                                <td class="text-muted small">{{ m.memo_date|date_fmt }}</td>
+                                <td class="small text-dark">{{ m.source }} &rarr; {{ m.destination }}</td>
+                                <td class="small fw-bold text-dark">{{ m.freight_amount|currency }}</td>
+                                <td class="small text-muted">{{ m.total_expense|currency }}</td>
+                                <td class="small fw-bold {% if m.profit >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                    {{ m.profit|currency }}
+                                </td>
+                                <td>
+                                    {% if m.status == 'Profit' %}
+                                    <span class="badge-status badge-profit">Profit</span>
+                                    {% else %}
+                                    <span class="badge-status badge-loss">Loss</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="7" class="text-center text-muted py-4">No memos logged yet.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity Logs & Fuel Bills -->
+        <div class="col-12 col-lg-5">
+            <div class="custom-table-card p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-white mb-0"><i class="fa-solid fa-clock-rotate-left text-warning me-2"></i>Recent Fleet Activity</h5>
+                    <span class="badge bg-warning bg-opacity-25 text-warning small">Live Feed</span>
+                </div>
+                <div class="d-flex flex-column gap-3">
+                    {% for log in recent_logs %}
+                    <div class="d-flex align-items-start gap-3 p-2 rounded" style="background: rgba(255,255,255,0.02);">
+                        <div class="p-2 rounded-circle {% if log.user_type == 'Admin' %}bg-primary{% else %}bg-info{% endif %} bg-opacity-10 {% if log.user_type == 'Admin' %}text-primary{% else %}text-info{% endif %} mt-1">
+                            <i class="fa-solid {% if log.user_type == 'Admin' %}fa-user-shield{% else %}fa-truck{% endif %} small"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <strong class="small text-white">{{ log.user_name }}</strong>
+                                <span class="text-muted" style="font-size: 0.7rem;">{{ log.created_at.strftime('%I:%M %p') if log.created_at else '' }}</span>
+                            </div>
+                            <div class="small text-primary fw-semibold">{{ log.action }}</div>
+                            <div class="text-muted small" style="font-size: 0.78rem;">{{ log.details }}</div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">No recent activity</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,881 @@
+{% extends 'base.html' %}
+{% block title %}Sign In & Register - Truck Maintenance System{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ==========================================================================
+   SPLIT-SCREEN AUTH CARD STYLES (MATCHING UI REFERENCE DESIGN)
+   ========================================================================== */
+.auth-page-wrapper {
+    min-height: calc(100vh - 80px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2.5rem 1rem;
+}
+
+.auth-split-card {
+    width: 100%;
+    max-width: 1060px;
+    background: #FFFFFF;
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.45), 0 0 40px rgba(37, 99, 235, 0.12);
+    display: flex;
+    flex-direction: row;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* LEFT BRANDED BANNER */
+.auth-banner-side {
+    width: 44%;
+    background: linear-gradient(180deg, #0A1C3C 0%, #07152F 100%);
+    padding: 3rem 2.25rem;
+    color: #FFFFFF;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+}
+
+.auth-brand-header {
+    text-align: center;
+}
+
+.auth-brand-logo-icon {
+    font-size: 2.75rem;
+    color: #FFFFFF;
+    margin-bottom: 0.5rem;
+    display: inline-block;
+}
+
+.auth-brand-title {
+    font-size: 1.55rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: #FFFFFF;
+    margin-bottom: 0.25rem;
+    font-family: var(--font-heading);
+}
+
+.auth-brand-tagline {
+    font-size: 0.8rem;
+    color: #93C5FD;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+}
+
+.auth-hero-img-box {
+    margin: 1.75rem 0;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: #000;
+}
+
+.auth-hero-img {
+    width: 100%;
+    height: 230px;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.4s ease;
+}
+.auth-hero-img-box:hover .auth-hero-img {
+    transform: scale(1.03);
+}
+
+.auth-features-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.auth-feature-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: #E2E8F0;
+}
+
+.auth-feature-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: rgba(59, 130, 246, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #60A5FA;
+    font-size: 0.95rem;
+}
+
+/* RIGHT FORM PANEL */
+.auth-form-side {
+    width: 56%;
+    padding: 2.25rem 3rem;
+    background: #FFFFFF;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    overflow-y: auto;
+    max-height: 90vh;
+    color: #0F172A;
+}
+
+/* ROLE SWITCHER PILLS AT TOP */
+.portal-selector-bar {
+    display: flex;
+    background: #F1F5F9;
+    padding: 4px;
+    border-radius: 12px;
+    margin-bottom: 2rem;
+    border: 1px solid #E2E8F0;
+}
+
+.portal-tab-btn {
+    flex: 1;
+    padding: 0.6rem 1rem;
+    border: none;
+    background: transparent;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #64748B;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.portal-tab-btn.active {
+    background: #FFFFFF;
+    color: #1E293B;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.auth-form-title {
+    font-size: 1.85rem;
+    font-weight: 800;
+    color: #0F172A;
+    margin-bottom: 0.35rem;
+    letter-spacing: -0.02em;
+    font-family: var(--font-heading);
+}
+
+.auth-form-subtitle {
+    font-size: 0.92rem;
+    color: #64748B;
+    margin-bottom: 1.75rem;
+}
+
+/* FORM INPUTS & LABELS */
+.auth-input-group {
+    position: relative;
+    margin-bottom: 1.15rem;
+}
+
+.auth-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.auth-input-icon {
+    position: absolute;
+    left: 1.1rem;
+    color: #94A3B8;
+    font-size: 1.05rem;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.auth-input-field {
+    width: 100%;
+    padding: 0.85rem 2.8rem 0.85rem 2.85rem !important;
+    background: #FFFFFF !important;
+    border: 1.5px solid #CBD5E1 !important;
+    border-radius: 12px !important;
+    color: #0F172A !important;
+    font-size: 0.95rem !important;
+    font-weight: 500 !important;
+    transition: all 0.2s ease !important;
+}
+
+.auth-input-field:focus {
+    border-color: #2563EB !important;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15) !important;
+    outline: none !important;
+}
+
+.auth-input-field::placeholder {
+    color: #94A3B8 !important;
+    font-weight: 400;
+}
+
+.auth-eye-btn {
+    position: absolute;
+    right: 0.9rem;
+    background: transparent;
+    border: none;
+    color: #94A3B8;
+    cursor: pointer;
+    font-size: 1.05rem;
+    padding: 0.35rem;
+    z-index: 2;
+    transition: color 0.2s ease;
+}
+.auth-eye-btn:hover {
+    color: #2563EB;
+}
+
+/* BUTTONS */
+.btn-auth-primary {
+    background: #2563EB;
+    color: #FFFFFF;
+    font-weight: 600;
+    font-size: 1rem;
+    padding: 0.85rem 1.5rem;
+    border-radius: 12px;
+    border: none;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.btn-auth-primary:hover {
+    background: #1D4ED8;
+    color: #FFFFFF;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+}
+
+.auth-divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 1.35rem 0;
+    color: #94A3B8;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+}
+.auth-divider::before, .auth-divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid #E2E8F0;
+}
+.auth-divider span {
+    padding: 0 0.85rem;
+}
+
+.btn-auth-google {
+    background: #FFFFFF;
+    border: 1.5px solid #E2E8F0;
+    color: #334155;
+    font-weight: 600;
+    font-size: 0.92rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: 12px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+.btn-auth-google:hover {
+    background: #F8FAFC;
+    border-color: #CBD5E1;
+    color: #0F172A;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.auth-switch-text {
+    text-align: center;
+    margin-top: 1.5rem;
+    font-size: 0.9rem;
+    color: #64748B;
+}
+
+.auth-switch-link {
+    color: #2563EB;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+}
+.auth-switch-link:hover {
+    text-decoration: underline;
+    color: #1D4ED8;
+}
+
+/* RESPONSIVE LAYOUT */
+@media (max-width: 991.98px) {
+    .auth-split-card {
+        flex-direction: column;
+        max-width: 540px;
+    }
+    .auth-banner-side {
+        width: 100%;
+        padding: 2.5rem 2rem;
+    }
+    .auth-hero-img-box {
+        display: none; /* Hide truck banner image on small tablets to save space */
+    }
+    .auth-form-side {
+        width: 100%;
+        padding: 2.5rem 2rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-page-wrapper">
+    <div class="auth-split-card">
+
+        <!-- ================= LEFT BRANDED BANNER SIDE ================= -->
+        <div class="auth-banner-side">
+            <!-- Header Brand & Tagline -->
+            <div class="auth-brand-header">
+                <div class="auth-brand-logo-icon">
+                    <i class="fa-solid fa-truck-moving"></i>
+                </div>
+                <h2 class="auth-brand-title">Truck Maintenance System</h2>
+                <p class="auth-brand-tagline">Smarter Trips | Better Tracking | Higher Profits</p>
+            </div>
+
+            <!-- Modern Highway Truck Hero Photo -->
+            <div class="auth-hero-img-box">
+                <img src="{{ url_for('static', filename='img/truck_banner.jpg') }}" alt="Commercial Transport Truck on Highway" class="auth-hero-img">
+            </div>
+
+            <!-- Bottom 4 Features Bullet Points -->
+            <div class="auth-features-list">
+                <div class="auth-feature-item">
+                    <div class="auth-feature-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                    <span>Secure & Reliable</span>
+                </div>
+                <div class="auth-feature-item">
+                    <div class="auth-feature-icon"><i class="fa-solid fa-chart-line"></i></div>
+                    <span>Track Expenses</span>
+                </div>
+                <div class="auth-feature-item">
+                    <div class="auth-feature-icon"><i class="fa-solid fa-location-dot"></i></div>
+                    <span>Manage Trips</span>
+                </div>
+                <div class="auth-feature-item">
+                    <div class="auth-feature-icon"><i class="fa-solid fa-users"></i></div>
+                    <span>Grow Your Fleet</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= RIGHT FORM PANEL SIDE ================= -->
+        <div class="auth-form-side">
+            
+            <!-- PORTAL ROLE SWITCHER: DRIVER vs ADMIN -->
+            <div class="portal-selector-bar">
+                <button type="button" class="portal-tab-btn {% if active_role != 'admin' %}active{% endif %}" id="btnDriverPortal" onclick="switchPortalMode('driver')">
+                    <i class="fa-solid fa-truck"></i> Driver Portal
+                </button>
+                <button type="button" class="portal-tab-btn {% if active_role == 'admin' %}active{% endif %}" id="btnAdminPortal" onclick="switchPortalMode('admin')">
+                    <i class="fa-solid fa-user-shield"></i> Admin (Owner)
+                </button>
+            </div>
+
+            <!-- ========================================================
+                 PORTAL 1: DRIVER PORTAL (SIGN IN & SIGN UP)
+                 ======================================================== -->
+            <div id="driverPortalContainer" {% if active_role == 'admin' %}style="display: none;"{% endif %}>
+                
+                <!-- 1A: DRIVER SIGN IN (MATCHES LEFT CARD IN REFERENCE) -->
+                <div id="driverSignInView">
+                    <h3 class="auth-form-title">Welcome Back</h3>
+                    <p class="auth-form-subtitle">Sign in to your account</p>
+
+                    <form method="POST" action="{{ url_for('auth.login') }}">
+                        <input type="hidden" name="role" value="driver">
+
+                        <!-- Email Address Input -->
+                        <div class="auth-input-group">
+                            <div class="auth-input-wrapper">
+                                <i class="fa-regular fa-envelope auth-input-icon"></i>
+                                <input type="email" name="email" id="driverLoginEmail" class="auth-input-field" placeholder="Email Address" required autocomplete="email">
+                            </div>
+                        </div>
+
+                        <!-- Password Input -->
+                        <div class="auth-input-group mb-2">
+                            <div class="auth-input-wrapper">
+                                <i class="fa-solid fa-lock auth-input-icon"></i>
+                                <input type="password" name="password" id="driverLoginPassword" class="auth-input-field" placeholder="Password" required autocomplete="current-password">
+                                <button type="button" class="auth-eye-btn" onclick="togglePass('driverLoginPassword', this)">
+                                    <i class="fa-regular fa-eye-slash"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Remember Me & Forgot Password Link -->
+                        <div class="d-flex justify-content-between align-items-center mb-4 pt-1">
+                            <div class="form-check m-0">
+                                <input class="form-check-input" type="checkbox" id="rememberMe" checked>
+                                <label class="form-check-label text-muted small fw-medium" for="rememberMe">Remember me</label>
+                            </div>
+                            <a href="{{ url_for('auth.forgot_password') }}" class="small fw-semibold text-primary text-decoration-none">
+                                Forgot password?
+                            </a>
+                        </div>
+
+                        <!-- Submit Button: Sign In -> -->
+                        <button type="submit" class="btn-auth-primary mb-3">
+                            Sign In <i class="fa-solid fa-arrow-right ms-1"></i>
+                        </button>
+
+                        <!-- Switch to Sign Up -->
+                        <div class="auth-switch-text">
+                            Don't have an account? 
+                            <a href="javascript:void(0)" onclick="toggleDriverAuthMode('signup')" class="auth-switch-link">Sign Up</a>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- 1B: DRIVER & ADMIN SIGN UP -->
+                <div id="driverSignUpView" style="display: none;">
+                    <h3 class="auth-form-title">Create Account</h3>
+                    <p class="auth-form-subtitle">Register your account and verify via Email OTP</p>
+
+                    <form method="POST" action="{{ url_for('auth.register_driver') }}" onsubmit="return validateDriverRegister()">
+                        <!-- Select Role (Driver or Admin) -->
+                        <div class="auth-input-group mb-2">
+                            <div class="auth-input-wrapper">
+                                <i class="fa-solid fa-id-badge auth-input-icon"></i>
+                                <select name="role" id="regRoleSelect" class="auth-input-field" style="cursor: pointer;" required onchange="handleRoleChange(this.value)">
+                                    <option value="driver" selected>Driver (லாரி ஓட்டுநர்)</option>
+                                    <option value="admin">Admin / Fleet Owner (உரிமையாளர்)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Driver Code -->
+                        <div class="auth-input-group mb-2" id="driverCodeGroup">
+                            <div class="auth-input-wrapper">
+                                <i class="fa-solid fa-barcode auth-input-icon"></i>
+                                <input type="text" name="driver_code" id="regDriverCode" class="auth-input-field font-monospace text-uppercase" placeholder="Driver Code / ID (e.g. {{ next_code or 'DRV-004' }})" value="{{ next_code or '' }}" required>
+                            </div>
+                        </div>
+
+                        <!-- Full Name -->
+                        <div class="auth-input-group mb-2">
+                            <div class="auth-input-wrapper">
+                                <i class="fa-regular fa-user auth-input-icon"></i>
+                                <input type="text" name="full_name" id="regDriverName" class="auth-input-field" placeholder="Full Name (உங்களின் முழு பெயர்)" required>
+                            </div>
+                        </div>
+
+                        <!-- Email Address -->
+                        <div class="auth-input-group mb-2">
+                            <div class="auth-input-wrapper">
+                                <i class="fa-regular fa-envelope auth-input-icon"></i>
+                                <input type="email" name="email" id="regDriverEmail" class="auth-input-field" placeholder="Email Address (மின்னஞ்சல் முகவரி)" required>
+                            </div>
+                        </div>
+
+                        <!-- Phone Number -->
+                        <div class="auth-input-group mb-2">
+                            <div class="auth-input-wrapper">
+                                <i class="fa-solid fa-phone auth-input-icon"></i>
+                                <input type="tel" name="phone" id="regDriverPhone" class="auth-input-field" placeholder="Phone Number (கைபேசி எண்)" required>
+                            </div>
+                        </div>
+
+                        <!-- Heavy Vehicle Driving License -->
+                        <div class="auth-input-group mb-2" id="driverLicenseGroup">
+                            <div class="auth-input-wrapper">
+                                <i class="fa-solid fa-id-card auth-input-icon"></i>
+                                <input type="text" name="license_number" id="regDriverLicense" class="auth-input-field font-monospace text-uppercase" placeholder="Heavy Vehicle Driving License (கனரக ஓட்டுநர் உரிமம்)" required>
+                            </div>
+                        </div>
+
+                        <!-- Residential Address -->
+                        <div class="auth-input-group mb-2" id="driverAddressGroup">
+                            <div class="auth-input-wrapper">
+                                <i class="fa-solid fa-house-user auth-input-icon"></i>
+                                <input type="text" name="address" id="regDriverAddress" class="auth-input-field" placeholder="Residential Address (வசிப்பிட முகவரி)" required>
+                            </div>
+                        </div>
+
+                        <!-- Password -->
+                        <div class="auth-input-group mb-2">
+                            <div class="auth-input-wrapper">
+                                <i class="fa-solid fa-lock auth-input-icon"></i>
+                                <input type="password" name="password" id="regDriverPassword" class="auth-input-field" placeholder="Password (Min 6, Number & Special Char)" required oninput="checkDriverPasswordRules(this.value)">
+                                <button type="button" class="auth-eye-btn" onclick="togglePass('regDriverPassword', this)">
+                                    <i class="fa-regular fa-eye-slash"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Confirm Password -->
+                        <div class="auth-input-group mb-3">
+                            <div class="auth-input-wrapper">
+                                <i class="fa-solid fa-lock auth-input-icon"></i>
+                                <input type="password" name="confirm_password" id="regDriverConfirmPass" class="auth-input-field" placeholder="Confirm Password" required oninput="checkDriverPasswordMatch()">
+                                <button type="button" class="auth-eye-btn" onclick="togglePass('regDriverConfirmPass', this)">
+                                    <i class="fa-regular fa-eye-slash"></i>
+                                </button>
+                            </div>
+                            <div id="driverMatchMsg" class="small mt-1 ps-1" style="display: none;"></div>
+                        </div>
+
+                        <!-- Submit Button: Sign Up -> -->
+                        <button type="submit" class="btn-auth-primary mb-3">
+                            Sign Up & Send OTP <i class="fa-solid fa-arrow-right ms-1"></i>
+                        </button>
+
+                        <!-- Switch to Sign In -->
+                        <div class="auth-switch-text">
+                            Already have an account? 
+                            <a href="javascript:void(0)" onclick="toggleDriverAuthMode('signin')" class="auth-switch-link">Sign In</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ========================================================
+                 PORTAL 2: ADMIN PORTAL
+                 (EXACT FIELDS: EMAIL, PASSWORD, CONFIRM PASSWORD, OTP)
+                 ======================================================== -->
+            <div id="adminPortalContainer" {% if active_role != 'admin' %}style="display: none;"{% endif %}>
+                <h3 class="auth-form-title">Admin Sign In</h3>
+                <p class="auth-form-subtitle">Owner secure login with password & OTP authentication</p>
+
+                <form method="POST" action="{{ url_for('auth.login') }}" id="adminLoginForm">
+                    <input type="hidden" name="role" value="admin">
+
+                    <!-- 1. Email Address -->
+                    <div class="auth-input-group">
+                        <label class="small fw-semibold text-dark mb-1 d-block">Admin Email Address <span class="text-danger">*</span></label>
+                        <div class="auth-input-wrapper">
+                            <i class="fa-regular fa-envelope auth-input-icon"></i>
+                            <input type="email" name="email" id="adminEmailField" class="auth-input-field" placeholder="stharanisamp@gmail.com" required value="{{ admin_email or '' }}" autocomplete="email">
+                        </div>
+                    </div>
+
+                    <!-- 2. Password -->
+                    <div class="auth-input-group">
+                        <label class="small fw-semibold text-dark mb-1 d-block">Admin Password <span class="text-danger">*</span></label>
+                        <div class="auth-input-wrapper">
+                            <i class="fa-solid fa-lock auth-input-icon"></i>
+                            <input type="password" name="password" id="adminPassField" class="auth-input-field" placeholder="Enter password" required autocomplete="current-password" value="{{ admin_password or '' }}">
+                            <button type="button" class="auth-eye-btn" onclick="togglePass('adminPassField', this)">
+                                <i class="fa-regular fa-eye-slash"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 3. Confirm Password -->
+                    <div class="auth-input-group">
+                        <label class="small fw-semibold text-dark mb-1 d-block">Confirm Password <span class="text-danger">*</span></label>
+                        <div class="auth-input-wrapper">
+                            <i class="fa-solid fa-shield-halved auth-input-icon"></i>
+                            <input type="password" name="confirm_password" id="adminConfirmPassField" class="auth-input-field" placeholder="Confirm password" required oninput="checkAdminPassMatch()" value="{{ admin_password or '' }}">
+                            <button type="button" class="auth-eye-btn" onclick="togglePass('adminConfirmPassField', this)">
+                                <i class="fa-regular fa-eye-slash"></i>
+                            </button>
+                        </div>
+                        <div id="adminMatchMsg" class="small mt-1 ps-1" style="display: none;"></div>
+                    </div>
+
+                    <!-- 4. OTP Code with "Get OTP" Button -->
+                    <div class="auth-input-group mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="small fw-semibold text-dark mb-0">6-Digit OTP Code <span class="text-danger">*</span></label>
+                            <button type="button" class="btn btn-link p-0 text-primary small fw-bold text-decoration-none" id="btnRequestAdminOtp" onclick="triggerAdminOtpDispatch()">
+                                <i class="fa-solid fa-paper-plane me-1"></i> Send OTP to Email
+                            </button>
+                        </div>
+                        <div class="auth-input-wrapper">
+                            <i class="fa-solid fa-key auth-input-icon"></i>
+                            <input type="text" name="otp" id="adminOtpField" class="auth-input-field" placeholder="Enter 6-digit OTP received in email" maxlength="6" inputmode="numeric" autocomplete="one-time-code" required value="{{ prefill_otp or '' }}">
+                        </div>
+                        <div id="adminOtpNotice" class="small mt-1 text-muted">
+                            <i class="fa-solid fa-circle-info me-1 text-info"></i> Click "Send OTP to Email" to receive the 6-digit verification code directly in your inbox.
+                        </div>
+                    </div>
+
+                    <!-- Submit Button: Sign In as Admin -> -->
+                    <button type="submit" class="btn-auth-primary mb-3">
+                        Sign In as Admin <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </button>
+
+                    <!-- Quick Demo Credentials Filler -->
+                    <div class="p-2 rounded mt-3" style="background: #F8FAFC; border: 1px dashed #CBD5E1;">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small text-muted fw-bold">Admin Demo Credentials:</span>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2 small flex-grow-1" onclick="fillAdminDemo(1)">
+                                <i class="fa-solid fa-user-shield me-1"></i> Tharani (Owner)
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2 small flex-grow-1" onclick="fillAdminDemo(2)">
+                                <i class="fa-solid fa-user-shield me-1"></i> Ambiga (Owner)
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+// Show/Hide Password Eye Toggle
+function togglePass(fieldId, btn) {
+    const field = document.getElementById(fieldId);
+    const icon = btn.querySelector('i');
+    if (field.type === 'password') {
+        field.type = 'text';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    } else {
+        field.type = 'password';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    }
+}
+
+// Switch between Driver Portal and Admin Portal
+function switchPortalMode(mode) {
+    const btnDriver = document.getElementById('btnDriverPortal');
+    const btnAdmin = document.getElementById('btnAdminPortal');
+    const driverBox = document.getElementById('driverPortalContainer');
+    const adminBox = document.getElementById('adminPortalContainer');
+
+    if (mode === 'admin') {
+        btnAdmin.classList.add('active');
+        btnDriver.classList.remove('active');
+        adminBox.style.display = 'block';
+        driverBox.style.display = 'none';
+    } else {
+        btnDriver.classList.add('active');
+        btnAdmin.classList.remove('active');
+        driverBox.style.display = 'block';
+        adminBox.style.display = 'none';
+    }
+}
+
+// Switch between Driver Sign In and Driver Sign Up
+function toggleDriverAuthMode(mode) {
+    const signInView = document.getElementById('driverSignInView');
+    const signUpView = document.getElementById('driverSignUpView');
+    if (mode === 'signup') {
+        signInView.style.display = 'none';
+        signUpView.style.display = 'block';
+    } else {
+        signUpView.style.display = 'none';
+        signInView.style.display = 'block';
+    }
+}
+
+// Real-time Driver Password Matching Check
+function checkDriverPasswordMatch() {
+    const p1 = document.getElementById('regDriverPassword').value;
+    const p2 = document.getElementById('regDriverConfirmPass').value;
+    const msg = document.getElementById('driverMatchMsg');
+
+    if (!p2) {
+        msg.style.display = 'none';
+        return;
+    }
+    msg.style.display = 'block';
+    if (p1 === p2) {
+        msg.innerHTML = '<span class="text-success fw-semibold"><i class="fa-solid fa-check me-1"></i> Passwords match</span>';
+    } else {
+        msg.innerHTML = '<span class="text-danger fw-semibold"><i class="fa-solid fa-xmark me-1"></i> Passwords do not match</span>';
+    }
+}
+
+function checkDriverPasswordRules(val) {
+    checkDriverPasswordMatch();
+}
+
+// Toggle Role Fields in Sign Up
+function handleRoleChange(role) {
+    const codeGroup = document.getElementById('driverCodeGroup');
+    const licenseGroup = document.getElementById('driverLicenseGroup');
+    const addressGroup = document.getElementById('driverAddressGroup');
+    const licenseInput = document.getElementById('regDriverLicense');
+    const addressInput = document.getElementById('regDriverAddress');
+    const codeInput = document.getElementById('regDriverCode');
+
+    if (role === 'admin') {
+        if (codeGroup) codeGroup.style.display = 'none';
+        if (licenseGroup) licenseGroup.style.display = 'none';
+        if (addressGroup) addressGroup.style.display = 'none';
+        if (licenseInput) licenseInput.required = false;
+        if (addressInput) addressInput.required = false;
+        if (codeInput) codeInput.required = false;
+    } else {
+        if (codeGroup) codeGroup.style.display = 'block';
+        if (licenseGroup) licenseGroup.style.display = 'block';
+        if (addressGroup) addressGroup.style.display = 'block';
+        if (licenseInput) licenseInput.required = true;
+        if (addressInput) addressInput.required = true;
+        if (codeInput) codeInput.required = true;
+    }
+}
+
+// Driver Form Validation
+function validateDriverRegister() {
+    const roleSelect = document.getElementById('regRoleSelect');
+    const isDriver = !roleSelect || roleSelect.value === 'driver';
+
+    if (isDriver) {
+        const code = document.getElementById('regDriverCode').value.trim();
+        const license = document.getElementById('regDriverLicense').value.trim();
+        const address = document.getElementById('regDriverAddress').value.trim();
+
+        if (!code) {
+            alert('Please enter a Driver Code.');
+            document.getElementById('regDriverCode').focus();
+            return false;
+        }
+        if (!license) {
+            alert('Please enter your Heavy Vehicle Driving License.');
+            document.getElementById('regDriverLicense').focus();
+            return false;
+        }
+        if (!address) {
+            alert('Please enter your Residential Address.');
+            document.getElementById('regDriverAddress').focus();
+            return false;
+        }
+    }
+
+    const p1 = document.getElementById('regDriverPassword').value;
+    const p2 = document.getElementById('regDriverConfirmPass').value;
+
+    if (p1.length < 6) {
+        alert('Password must be at least 6 characters long.');
+        return false;
+    }
+    if (!/\d/.test(p1)) {
+        alert('Password must contain at least one number (0-9).');
+        return false;
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\/`~]/.test(p1)) {
+        alert('Password must contain at least one special character (!, @, #, $, %, etc.).');
+        return false;
+    }
+    if (p1 !== p2) {
+        alert('Password and Confirm Password do not match.');
+        return false;
+    }
+    return true;
+}
+
+// Admin Real-time Password Matching Check
+function checkAdminPassMatch() {
+    const p1 = document.getElementById('adminPassField').value;
+    const p2 = document.getElementById('adminConfirmPassField').value;
+    const msg = document.getElementById('adminMatchMsg');
+
+    if (!p2) {
+        msg.style.display = 'none';
+        return;
+    }
+    msg.style.display = 'block';
+    if (p1 === p2) {
+        msg.innerHTML = '<span class="text-success fw-semibold"><i class="fa-solid fa-check me-1"></i> Passwords match</span>';
+    } else {
+        msg.innerHTML = '<span class="text-danger fw-semibold"><i class="fa-solid fa-xmark me-1"></i> Passwords do not match</span>';
+    }
+}
+
+// Admin Send OTP Trigger via AJAX
+async function triggerAdminOtpDispatch() {
+    const email = document.getElementById('adminEmailField').value.trim();
+    const btn = document.getElementById('btnRequestAdminOtp');
+    const notice = document.getElementById('adminOtpNotice');
+
+    if (!email) {
+        alert('Please enter your Admin Email Address first.');
+        document.getElementById('adminEmailField').focus();
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Sending...';
+
+    try {
+        const response = await fetch('/auth/send-admin-otp', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({email: email})
+        });
+        const result = await response.json();
+
+        if (response.ok && result.success && result.sent) {
+            notice.innerHTML = `<span class="text-success fw-semibold"><i class="fa-solid fa-circle-check me-1"></i> 6-Digit OTP dispatched to ${result.email}! Check your Gmail inbox and enter code manually below.</span>`;
+            document.getElementById('adminOtpField').value = '';
+        } else {
+            notice.innerHTML = `<span class="text-warning fw-semibold"><i class="fa-solid fa-triangle-exclamation me-1"></i> ${result.message || 'Failed to deliver OTP to email. Please verify Gmail PASS in .env.'}</span>`;
+            if (result.otp_code) {
+                document.getElementById('adminOtpField').value = result.otp_code;
+            } else {
+                document.getElementById('adminOtpField').value = '';
+            }
+        }
+    } catch (e) {
+        notice.innerHTML = `<span class="text-danger fw-semibold"><i class="fa-solid fa-triangle-exclamation me-1"></i> Error sending OTP to email. Please verify SMTP settings.</span>`;
+        document.getElementById('adminOtpField').value = '';
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-rotate-right me-1"></i> Resend OTP';
+    }
+}
+
+
+
+// Quick Fill Demo Credentials for Admin
+function fillAdminDemo(adminNum) {
+    if (adminNum === 1) {
+        document.getElementById('adminEmailField').value = 'stharanisamp@gmail.com';
+        document.getElementById('adminPassField').value = 'admin123';
+        document.getElementById('adminConfirmPassField').value = 'admin123';
+    } else {
+        document.getElementById('adminEmailField').value = 'ambigaa075@gmail.com';
+        document.getElementById('adminPassField').value = 'ambigaa@075';
+        document.getElementById('adminConfirmPassField').value = 'ambigaa@075';
+    }
+    document.getElementById('adminOtpField').value = '';
+    checkAdminPassMatch();
+}
+
+// Initial View State on Page Load
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('tab') === 'signup' || urlParams.get('tab') === 'register') {
+        toggleDriverAuthMode('signup');
+    }
+    if (urlParams.get('role') === 'admin' || '{{ active_role }}' === 'admin') {
+        switchPortalMode('admin');
+    }
+    if (document.getElementById('adminPassField') && document.getElementById('adminPassField').value) {
+        checkAdminPassMatch();
+    }
+});
+</script>
+{% endblock %}
