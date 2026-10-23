@@ -60,8 +60,9 @@ def create_app(config_class=Config):
             return d.strftime('%d %b %Y')
         return str(d)
 
-    # Root route
+    # Root route and Vercel serverless entry route
     @app.route('/')
+    @app.route('/api/index')
     def index():
         role = session.get('role')
         if role == 'admin':
