@@ -4,7 +4,6 @@ Flask-Mail>=0.9.1
 SQLAlchemy>=2.0.0
 python-dotenv>=1.0.0
 PyMySQL>=1.1.0
-mysql-connector-python>=8.0.0
 psycopg2-binary>=2.9.9
 Werkzeug>=3.0.0
 Pillow>=10.0.0
