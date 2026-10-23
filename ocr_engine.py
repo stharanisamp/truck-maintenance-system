@@ -1,7 +1,10 @@
 import os
 import re
 from datetime import datetime, date
-import fitz  # PyMuPDF
+try:
+    import fitz  # PyMuPDF
+except ImportError:
+    fitz = None
 from PIL import Image
 
 # Import image enhancement pipeline
@@ -25,6 +28,8 @@ def get_easyocr_reader():
 def convert_pdf_to_images(pdf_path, max_pages=1):
     """Converts the first page(s) of a PDF to PIL Images using PyMuPDF"""
     images = []
+    if fitz is None:
+        return images
     try:
         import tempfile
         doc = fitz.open(pdf_path)
